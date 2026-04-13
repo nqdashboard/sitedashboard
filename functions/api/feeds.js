@@ -625,6 +625,7 @@ export async function onRequestGet(context) {
   cyber.push(...iocSlice);
   remaining -= iocSlice.length;
   cyber.push(...cyberNews.slice(0, remaining));
+  cyber.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
   // Cyber stats for OpenCTI-style summary
   const cyberStats = {

@@ -3,9 +3,13 @@
 const API_URL = '/api/feeds';
 const REFRESH_INTERVAL = 2 * 60 * 1000;        // 2 minutes
 const HARD_RELOAD_INTERVAL = 60 * 60 * 1000;   // 60 minutes
+const FEED_SCROLL_SPEED = 0.012;               // px per ms
+const FEED_INTERACTION_PAUSE = 12000;          // 12 seconds
+const FEED_EDGE_PAUSE = 2500;                  // 2.5 seconds
 const CYBER_TICKER_SPEED = 0.026;              // px per ms
 const CYBER_INTERACTION_PAUSE = 12000;         // 12 seconds
 let consecutiveFailures = 0;
+const feedScrollers = new WeakMap();
 let cyberTicker = null;
 
 const CYBER_KEYWORDS = /\b(breach|leak|infostealer|stealer|malware|ransomware|data dump|credentials|dark web|compromised)\b/i;
@@ -188,8 +192,10 @@ function createItemHTML(item, defaultColorClass, highlight = false) {
 
 function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
   const container = document.getElementById(containerId);
+  const scrollEl = container.closest('.feed__scroll');
 
   if (!items.length) {
+    if (scrollEl) destroyFeedScroller(scrollEl);
     container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No active alerts</span></div>';
     return;
   }
@@ -198,6 +204,8 @@ function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
     const highlight = highlightRegex ? highlightRegex.test(item.title + ' ' + (item.description || '')) : false;
     return createItemHTML(item, defaultColorClass, highlight);
   }).join('');
+
+  if (scrollEl) requestAnimationFrame(() => setupFeedScroller(scrollEl));
 }
 
 function renderCyberFeed(containerId, items) {
@@ -207,13 +215,99 @@ function renderCyberFeed(containerId, items) {
     container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No active alerts</span></div>';
     return;
   }
-  const html = items.map(item => {
+  const orderedItems = items.slice()
+    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+  const html = orderedItems.map(item => {
     const highlight = CYBER_KEYWORDS.test(item.title + ' ' + (item.description || ''));
     return createItemHTML(item, 'feed-item__source--red', highlight);
   }).join('');
   container.dataset.baseHtml = html;
   container.innerHTML = html;
   requestAnimationFrame(setupCyberTicker);
+}
+
+function destroyFeedScroller(scrollEl) {
+  const state = feedScrollers.get(scrollEl);
+  if (!state) return;
+  state.abort.abort();
+  cancelAnimationFrame(state.rafId);
+  feedScrollers.delete(scrollEl);
+}
+
+function setupFeedScroller(scrollEl) {
+  if (!scrollEl) return;
+
+  destroyFeedScroller(scrollEl);
+
+  const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+  if (maxScroll <= 0) {
+    scrollEl.scrollTop = 0;
+    return;
+  }
+
+  const abort = new AbortController();
+  const state = {
+    abort,
+    direction: 1,
+    hovering: false,
+    lastTs: null,
+    pauseUntil: performance.now() + FEED_EDGE_PAUSE,
+    rafId: 0,
+  };
+  feedScrollers.set(scrollEl, state);
+
+  function pauseAutoScroll(ms = FEED_INTERACTION_PAUSE) {
+    state.pauseUntil = performance.now() + ms;
+  }
+
+  function tick(ts) {
+    if (feedScrollers.get(scrollEl) !== state) return;
+
+    if (state.lastTs == null) {
+      state.lastTs = ts;
+    } else {
+      const delta = ts - state.lastTs;
+      state.lastTs = ts;
+
+      if (!document.hidden && !state.hovering && ts >= state.pauseUntil) {
+        const currentMax = scrollEl.scrollHeight - scrollEl.clientHeight;
+        if (currentMax <= 0) {
+          scrollEl.scrollTop = 0;
+        } else {
+          const next = scrollEl.scrollTop + (delta * FEED_SCROLL_SPEED * state.direction);
+
+          if (next >= currentMax) {
+            scrollEl.scrollTop = currentMax;
+            state.direction = -1;
+            state.pauseUntil = ts + FEED_EDGE_PAUSE;
+          } else if (next <= 0) {
+            scrollEl.scrollTop = 0;
+            state.direction = 1;
+            state.pauseUntil = ts + FEED_EDGE_PAUSE;
+          } else {
+            scrollEl.scrollTop = next;
+          }
+        }
+      }
+    }
+
+    state.rafId = requestAnimationFrame(tick);
+  }
+
+  scrollEl.addEventListener('mouseenter', () => {
+    state.hovering = true;
+  }, { signal: abort.signal });
+
+  scrollEl.addEventListener('mouseleave', () => {
+    state.hovering = false;
+    pauseAutoScroll(1500);
+  }, { signal: abort.signal });
+
+  scrollEl.addEventListener('touchstart', () => pauseAutoScroll(), { passive: true, signal: abort.signal });
+  scrollEl.addEventListener('wheel', () => pauseAutoScroll(), { passive: true, signal: abort.signal });
+
+  state.rafId = requestAnimationFrame(tick);
 }
 
 function destroyCyberTicker() {
@@ -321,8 +415,10 @@ function initializeFeedScrollInteractions() {
       if (isHorizontal) return;
 
       const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+      if (!delta) return;
+
       const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-      if (!delta || maxScroll <= 0) return;
+      if (maxScroll <= 0) return;
 
       event.preventDefault();
       const next = Math.max(0, Math.min(maxScroll, scrollEl.scrollTop + delta));
