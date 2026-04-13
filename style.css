@@ -100,11 +100,12 @@ body {
 /* ── Clocks ──────────────────────────────────────────── */
 .clocks {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   padding: 14px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-panel);
   flex-shrink: 0;
+  gap: 12px;
 }
 
 .clock {
@@ -112,6 +113,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .clock__city {
@@ -170,7 +173,8 @@ body {
 
 .aoi-section .feed__scroll {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .feed__heading {
@@ -198,8 +202,25 @@ body {
 /* ── Scroll containers — static, newest at top ─────────── */
 .feed__scroll {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.feed__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.feed__scroll--horizontal {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: auto;
+}
+
+.feed__scroll--horizontal::-webkit-scrollbar {
+  display: none;
 }
 
 .feed__items {
@@ -218,17 +239,7 @@ body {
 
 .feed__items--horizontal {
   flex-direction: row;
-  overflow: hidden;
-  animation: scroll-x 120s linear infinite;
-}
-
-.feed__items--horizontal:hover {
-  animation-play-state: paused;
-}
-
-@keyframes scroll-x {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  width: max-content;
 }
 
 .feed__items--horizontal .feed-item {

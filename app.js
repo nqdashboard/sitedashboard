@@ -3,7 +3,10 @@
 const API_URL = '/api/feeds';
 const REFRESH_INTERVAL = 2 * 60 * 1000;        // 2 minutes
 const HARD_RELOAD_INTERVAL = 60 * 60 * 1000;   // 60 minutes
+const CYBER_TICKER_SPEED = 0.026;              // px per ms
+const CYBER_INTERACTION_PAUSE = 12000;         // 12 seconds
 let consecutiveFailures = 0;
+let cyberTicker = null;
 
 const CYBER_KEYWORDS = /\b(breach|leak|infostealer|stealer|malware|ransomware|data dump|credentials|dark web|compromised)\b/i;
 
@@ -112,6 +115,7 @@ function updateClocks() {
 
 setInterval(updateClocks, 1000);
 updateClocks();
+initializeFeedScrollInteractions();
 
 /* ── Relative Time ────────────────────────────────────── */
 
@@ -199,6 +203,7 @@ function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
 function renderCyberFeed(containerId, items) {
   const container = document.getElementById(containerId);
   if (!items.length) {
+    destroyCyberTicker();
     container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No active alerts</span></div>';
     return;
   }
@@ -206,8 +211,124 @@ function renderCyberFeed(containerId, items) {
     const highlight = CYBER_KEYWORDS.test(item.title + ' ' + (item.description || ''));
     return createItemHTML(item, 'feed-item__source--red', highlight);
   }).join('');
-  // Duplicate items for seamless scroll loop
-  container.innerHTML = html + html;
+  container.dataset.baseHtml = html;
+  container.innerHTML = html;
+  requestAnimationFrame(setupCyberTicker);
+}
+
+function destroyCyberTicker() {
+  if (!cyberTicker) return;
+  cyberTicker.abort.abort();
+  cancelAnimationFrame(cyberTicker.rafId);
+  cyberTicker = null;
+}
+
+function setupCyberTicker() {
+  const scrollEl = document.getElementById('scroll-cyber');
+  const track = document.getElementById('items-cyber');
+  if (!scrollEl || !track) return;
+
+  destroyCyberTicker();
+  track.innerHTML = track.dataset.baseHtml || track.innerHTML;
+
+  const baseItems = Array.from(track.children);
+  if (!baseItems.length) return;
+
+  let safety = 0;
+  while (track.scrollWidth < scrollEl.clientWidth * 1.5 && safety < 4) {
+    baseItems.forEach(item => track.appendChild(item.cloneNode(true)));
+    safety++;
+  }
+
+  const cycleItems = Array.from(track.children).map(item => item.cloneNode(true));
+  cycleItems.forEach(item => track.appendChild(item));
+
+  const loopWidth = track.scrollWidth / 2;
+  const abort = new AbortController();
+  const state = {
+    abort,
+    hovering: false,
+    lastTs: null,
+    pauseUntil: performance.now() + 1500,
+    loopWidth,
+    rafId: 0,
+  };
+  cyberTicker = state;
+
+  function pauseAutoScroll(ms = CYBER_INTERACTION_PAUSE) {
+    state.pauseUntil = performance.now() + ms;
+  }
+
+  function normalizeScroll() {
+    if (!state.loopWidth) return;
+    if (scrollEl.scrollLeft >= state.loopWidth) {
+      scrollEl.scrollLeft -= state.loopWidth;
+    }
+  }
+
+  scrollEl.scrollLeft = 0;
+
+  scrollEl.addEventListener('wheel', event => {
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (!delta) return;
+    event.preventDefault();
+    pauseAutoScroll();
+    scrollEl.scrollLeft += delta;
+    normalizeScroll();
+  }, { passive: false, signal: abort.signal });
+
+  scrollEl.addEventListener('mouseenter', () => {
+    state.hovering = true;
+  }, { signal: abort.signal });
+
+  scrollEl.addEventListener('mouseleave', () => {
+    state.hovering = false;
+    pauseAutoScroll(1500);
+  }, { signal: abort.signal });
+
+  scrollEl.addEventListener('touchstart', () => pauseAutoScroll(), { passive: true, signal: abort.signal });
+  scrollEl.addEventListener('scroll', normalizeScroll, { signal: abort.signal });
+
+  window.addEventListener('resize', () => {
+    if (cyberTicker === state) requestAnimationFrame(setupCyberTicker);
+  }, { signal: abort.signal });
+
+  function tick(ts) {
+    if (cyberTicker !== state) return;
+    if (state.lastTs == null) {
+      state.lastTs = ts;
+    } else {
+      const delta = ts - state.lastTs;
+      state.lastTs = ts;
+      if (!document.hidden && !state.hovering && ts >= state.pauseUntil) {
+        scrollEl.scrollLeft += delta * CYBER_TICKER_SPEED;
+        normalizeScroll();
+      }
+    }
+    state.rafId = requestAnimationFrame(tick);
+  }
+
+  state.rafId = requestAnimationFrame(tick);
+}
+
+function initializeFeedScrollInteractions() {
+  document.querySelectorAll('.feed__scroll').forEach(scrollEl => {
+    if (scrollEl.dataset.scrollBound === 'true') return;
+    scrollEl.dataset.scrollBound = 'true';
+
+    const isHorizontal = scrollEl.classList.contains('feed__scroll--horizontal');
+    scrollEl.addEventListener('wheel', event => {
+      if (isHorizontal) return;
+
+      const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+      const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (!delta || maxScroll <= 0) return;
+
+      event.preventDefault();
+      const next = Math.max(0, Math.min(maxScroll, scrollEl.scrollTop + delta));
+      scrollEl.scrollTop = next;
+    }, { passive: false });
+  });
 }
 
 /* ── Connection Status ────────────────────────────────── */
