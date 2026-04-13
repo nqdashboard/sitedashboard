@@ -94,6 +94,33 @@ function stripHtml(html) {
   return s.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim().slice(0, 300);
 }
 
+function extractText(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map(extractText).find(Boolean) || '';
+  if (typeof value === 'object') {
+    return value['#text'] || value['@_term'] || value['@_label'] || value['@_value'] || '';
+  }
+  return '';
+}
+
+function parseDateValue(value) {
+  const text = extractText(value).trim();
+  if (!text) return null;
+
+  const ordinalMatch = text.match(/^(\d{4})-(\d{3})$/);
+  if (ordinalMatch) {
+    const year = Number(ordinalMatch[1]);
+    const dayOfYear = Number(ordinalMatch[2]);
+    const parsed = new Date(Date.UTC(year, 0, dayOfYear));
+    return isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  const parsed = new Date(text);
+  return isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 function normalizeTitle(title) {
   return (title || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 }
@@ -112,11 +139,9 @@ function parseRss(xml, feedName, sourceType) {
     return items.map(item => {
       const title = item.title || '';
       const link = item.link?.['@_href'] || item.link || '';
-      const pubDate = item.pubDate || item.published || item.updated || item['dc:date'] || null;
+      const pubDate = item.pubDate || item.published || item.updated || item['dc:date'] || item['atom:updated'] || item['atom:published'] || null;
       const description = stripHtml(item.description || item.summary || item.content || '');
-
-      const parsed = pubDate ? new Date(pubDate) : null;
-      const validDate = parsed && !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+      const validDate = parseDateValue(pubDate);
 
       return {
         source: feedName,
@@ -126,7 +151,7 @@ function parseRss(xml, feedName, sourceType) {
         description,
         pubDate: validDate,
       };
-    }).filter(i => i.title && isRecent(i.pubDate));
+    }).filter(i => i.title && i.pubDate && isRecent(i.pubDate));
   } catch (err) {
     console.error('RSS parse error:', err.message || err);
     return [];
