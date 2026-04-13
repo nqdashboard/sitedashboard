@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+.DS_Store
+.claude/
+HANDOFF.md
+FEEDBACK FOR CLAUDE CODE.md
+NQ - Dashboard Files.zip
+NQ - Dashboard Files/

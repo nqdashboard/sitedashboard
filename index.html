@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operations Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header__brand">
+      <img src="https://images.squarespace-cdn.com/content/v1/68ea6f748ff56267a49c5342/f99c07bb-eec5-4e0d-9366-93c35ef41c88/NQ-Wordmark_AW.png?format=1500w"
+           alt="North Quay" class="header__logo">
+      <span class="header__subtitle">OPERATIONS ROOM</span>
+    </div>
+    <div class="header__status">
+      <span class="status-dot" id="status-dot" title="Feed connection status"></span>
+      <span id="last-updated" class="header__updated">Connecting...</span>
+    </div>
+  </header>
+
+  <section class="clocks" id="clocks">
+    <div class="clock" data-tz="America/Panama">
+      <span class="clock__city">Panama City</span>
+      <span class="clock__time"></span>
+      <span class="clock__date"></span>
+    </div>
+    <div class="clock" data-tz="Europe/London">
+      <span class="clock__city">London</span>
+      <span class="clock__time"></span>
+      <span class="clock__date"></span>
+    </div>
+    <div class="clock" data-tz="Europe/Rome">
+      <span class="clock__city">Rome</span>
+      <span class="clock__time"></span>
+      <span class="clock__date"></span>
+    </div>
+    <div class="clock" data-tz="Africa/Lusaka">
+      <span class="clock__city">Lusaka</span>
+      <span class="clock__time"></span>
+      <span class="clock__date"></span>
+    </div>
+  </section>
+
+  <main class="feeds">
+    <section class="feed feed--aoi" id="feed-aoi">
+      <div class="aoi-section" id="aoi-uk">
+        <h2 class="feed__heading feed__heading--country">United Kingdom</h2>
+        <div class="feed__scroll">
+          <div class="feed__items" id="items-aoi-uk"></div>
+        </div>
+      </div>
+      <div class="aoi-section" id="aoi-zambia">
+        <h2 class="feed__heading feed__heading--country">Zambia</h2>
+        <div class="feed__scroll">
+          <div class="feed__items" id="items-aoi-zambia"></div>
+        </div>
+      </div>
+      <div class="aoi-section" id="aoi-panama">
+        <h2 class="feed__heading feed__heading--country">Panama</h2>
+        <div class="feed__scroll">
+          <div class="feed__items" id="items-aoi-panama"></div>
+        </div>
+      </div>
+    </section>
+    <section class="feed feed--global" id="feed-global">
+      <h2 class="feed__heading feed__heading--blue">Global Geopolitical &amp; Conflict Feed</h2>
+      <div class="feed__scroll" id="scroll-global">
+        <div class="feed__items" id="items-global"></div>
+      </div>
+    </section>
+  </main>
+
+  <section class="cyber" id="feed-cyber">
+    <h2 class="feed__heading feed__heading--red">
+      Cyber Threat Feed
+      <span class="infocon" id="infocon" title="SANS ISC InfoCon">
+        <span class="infocon__dot" id="infocon-dot"></span>
+        <span class="infocon__label" id="infocon-label">INFOCON</span>
+      </span>
+      <span class="cyber-stats" id="cyber-stats"></span>
+    </h2>
+    <div class="feed__scroll feed__scroll--horizontal" id="scroll-cyber">
+      <div class="feed__items feed__items--horizontal" id="items-cyber"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span class="footer__text">North Quay Holdings</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
