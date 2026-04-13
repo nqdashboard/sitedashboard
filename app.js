@@ -11,6 +11,7 @@ const CYBER_INTERACTION_PAUSE = 12000;         // 12 seconds
 let consecutiveFailures = 0;
 const feedScrollers = new WeakMap();
 let cyberTicker = null;
+const renderedFeedItems = new Map();
 
 const CYBER_KEYWORDS = /\b(breach|leak|infostealer|stealer|malware|ransomware|data dump|credentials|dark web|compromised)\b/i;
 
@@ -144,12 +145,22 @@ function ageClass(dateStr) {
   return '';
 }
 
+function itemKey(item) {
+  return [
+    item.source || '',
+    item.title || '',
+    item.link || '',
+    item.pubDate || '',
+  ].join('||');
+}
+
 /* ── Rendering ────────────────────────────────────────── */
 
-function createItemHTML(item, defaultColorClass, highlight = false) {
+function createItemHTML(item, defaultColorClass, highlight = false, isNew = false) {
   const escapedTitle = item.title
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const highlightClass = highlight ? ' feed-item--highlight' : '';
+  const newClass = isNew ? ' feed-item--new' : '';
 
   const style = getSourceStyle(item);
   const colorClass = style.colorClass || defaultColorClass;
@@ -178,7 +189,7 @@ function createItemHTML(item, defaultColorClass, highlight = false) {
     : '';
 
   return `
-    <div class="feed-item${highlightClass}${typeClass}${fatalClass}${ageClass(item.pubDate)}">
+    <div class="feed-item${highlightClass}${newClass}${typeClass}${fatalClass}${ageClass(item.pubDate)}">
       <div class="feed-item__meta">
         ${badgeHTML}
         <span class="feed-item__source ${colorClass}">${item.source}</span>
@@ -193,35 +204,45 @@ function createItemHTML(item, defaultColorClass, highlight = false) {
 function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
   const container = document.getElementById(containerId);
   const scrollEl = container.closest('.feed__scroll');
+  const previousKeys = renderedFeedItems.get(containerId);
 
   if (!items.length) {
     if (scrollEl) destroyFeedScroller(scrollEl);
+    renderedFeedItems.set(containerId, new Set());
     container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No active alerts</span></div>';
     return;
   }
 
+  const nextKeys = new Set(items.map(itemKey));
   container.innerHTML = items.map(item => {
     const highlight = highlightRegex ? highlightRegex.test(item.title + ' ' + (item.description || '')) : false;
-    return createItemHTML(item, defaultColorClass, highlight);
+    const isNew = Boolean(previousKeys && !previousKeys.has(itemKey(item)));
+    return createItemHTML(item, defaultColorClass, highlight, isNew);
   }).join('');
+  renderedFeedItems.set(containerId, nextKeys);
 
   if (scrollEl) requestAnimationFrame(() => setupFeedScroller(scrollEl));
 }
 
 function renderCyberFeed(containerId, items) {
   const container = document.getElementById(containerId);
+  const previousKeys = renderedFeedItems.get(containerId);
   if (!items.length) {
     destroyCyberTicker();
+    renderedFeedItems.set(containerId, new Set());
     container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No active alerts</span></div>';
     return;
   }
   const orderedItems = items.slice()
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
+  const nextKeys = new Set(orderedItems.map(itemKey));
   const html = orderedItems.map(item => {
     const highlight = CYBER_KEYWORDS.test(item.title + ' ' + (item.description || ''));
-    return createItemHTML(item, 'feed-item__source--red', highlight);
+    const isNew = Boolean(previousKeys && !previousKeys.has(itemKey(item)));
+    return createItemHTML(item, 'feed-item__source--red', highlight, isNew);
   }).join('');
+  renderedFeedItems.set(containerId, nextKeys);
   container.dataset.baseHtml = html;
   container.innerHTML = html;
   requestAnimationFrame(setupCyberTicker);
