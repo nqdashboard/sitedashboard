@@ -78,7 +78,7 @@ const NON_GEOPOLITICAL = /\b(football|soccer|cricket|rugby|tennis|boxing|UFC|MMA
 
 /* ── Helpers ────────────────────────────────────────────── */
 
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
 
 function isRecent(dateStr) {
