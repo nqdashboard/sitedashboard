@@ -73,15 +73,14 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  position: absolute;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-top: 2px;
 }
 
 .header__updated {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .status-dot {
