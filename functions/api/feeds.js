@@ -63,7 +63,6 @@ const MASTODON_INFOSEC_URL = 'https://infosec.exchange/api/v1/timelines/public?l
 const CISA_KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
 const THREATFOX_URL = 'https://threatfox.abuse.ch/export/json/recent/';
 const FEODO_URL = 'https://feodotracker.abuse.ch/downloads/ipblocklist.json';
-const URLHAUS_URL = 'https://urlhaus-api.abuse.ch/v1/urls/recent/';
 const SANS_INFOCON_URL = 'https://isc.sans.edu/api/infocon?json';
 
 /* ── AOI Country Filters (for ACLED/ReliefWeb routing) ── */
@@ -462,37 +461,6 @@ async function fetchFeodoTracker(authKey) {
   }
 }
 
-/* ── URLhaus — malicious URLs ─────────────────────────── */
-
-async function fetchUrlhaus(authKey) {
-  try {
-    const headers = authKey ? { 'Auth-Key': authKey } : {};
-    const res = await fetch(URLHAUS_URL, { headers, cf: { cacheTtl: 900, cacheEverything: true } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!data.urls || !Array.isArray(data.urls)) return [];
-
-    return data.urls
-      .filter(u => u.url_status === 'online' && isRecent(u.date_added))
-      .slice(0, 15)
-      .map(u => {
-        const tags = Array.isArray(u.tags) ? u.tags.filter(Boolean).join(', ') : (u.tags || '');
-        const threat = u.threat || 'malware_download';
-        return {
-          source: 'URLhaus',
-          sourceType: 'ioc',
-          title: `${threat}: ${u.url}`,
-          link: u.urlhaus_reference || '#',
-          description: tags,
-          pubDate: new Date(u.date_added).toISOString(),
-        };
-      });
-  } catch (err) {
-    console.error('URLhaus error:', err.message || err);
-    return [];
-  }
-}
-
 /* ── SANS ISC InfoCon — threat level indicator ─────────── */
 
 async function fetchSansInfocon() {
@@ -560,7 +528,6 @@ export async function onRequestGet(context) {
     kevItems,
     threatFoxItems,
     feodoItems,
-    urlhausItems,
     threatLevel,
   ] = await Promise.all([
     fetchGdelt(GDELT_GLOBAL_URL),
@@ -582,7 +549,6 @@ export async function onRequestGet(context) {
     fetchCisaKev(),
     fetchThreatFox(abusechKey),
     fetchFeodoTracker(abusechKey),
-    fetchUrlhaus(abusechKey),
     fetchSansInfocon(),
   ]);
 
@@ -633,7 +599,7 @@ export async function onRequestGet(context) {
   const kevDeduped = deduplicate([...kevItems, ...ncscItems]);
   const breachDeduped = deduplicate(hibpItems)
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  const iocDeduped = deduplicate([...threatFoxItems, ...feodoItems, ...urlhausItems])
+  const iocDeduped = deduplicate([...threatFoxItems, ...feodoItems])
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   const cyberNews = deduplicate([...cyberRssItems, ...mastodonItems])
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));

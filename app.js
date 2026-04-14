@@ -4,6 +4,7 @@ const API_URL = '/api/feeds';
 const REFRESH_INTERVAL = 2 * 60 * 1000;        // 2 minutes
 const HARD_RELOAD_INTERVAL = 60 * 60 * 1000;   // 60 minutes
 const FEED_SCROLL_SPEED = 0.012;               // px per ms
+const GLOBAL_FEED_SCROLL_SPEED_MULTIPLIER = 0.5;
 const FEED_INTERACTION_PAUSE = 12000;          // 12 seconds
 const FEED_EDGE_PAUSE = 2500;                  // 2.5 seconds
 let consecutiveFailures = 0;
@@ -185,7 +186,7 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
     ? item.description.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
     : '';
   const descHTML = desc
-    ? `<p class="feed-item__desc">${desc.length > 120 ? desc.slice(0, 120) + '...' : desc}</p>`
+    ? `<p class="feed-item__desc">${desc.length > 260 ? desc.slice(0, 257) + '...' : desc}</p>`
     : '';
 
   return `
@@ -267,6 +268,9 @@ function setupFeedScroller(scrollEl) {
   }
 
   const abort = new AbortController();
+  const scrollSpeed = scrollEl.id === 'scroll-global'
+    ? FEED_SCROLL_SPEED * GLOBAL_FEED_SCROLL_SPEED_MULTIPLIER
+    : FEED_SCROLL_SPEED;
   const state = {
     abort,
     direction: 1,
@@ -295,7 +299,7 @@ function setupFeedScroller(scrollEl) {
         if (currentMax <= 0) {
           scrollEl.scrollTop = 0;
         } else {
-          const next = scrollEl.scrollTop + (delta * FEED_SCROLL_SPEED * state.direction);
+          const next = scrollEl.scrollTop + (delta * scrollSpeed * state.direction);
 
           if (next >= currentMax) {
             scrollEl.scrollTop = currentMax;
