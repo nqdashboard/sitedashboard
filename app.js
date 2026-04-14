@@ -8,6 +8,8 @@ const GLOBAL_FEED_SCROLL_SPEED_MULTIPLIER = 0.5;
 const FEED_INTERACTION_PAUSE = 12000;          // 12 seconds
 const FEED_EDGE_PAUSE = 2500;                  // 2.5 seconds
 const PREVIEW_TWO_SENTENCE_MAX = 240;
+const CYBER_CARD_MAX_CHARS = 190;
+const CYBER_CARD_MAX_LINES = 3;
 let consecutiveFailures = 0;
 const feedScrollers = new WeakMap();
 const renderedFeedItems = new Map();
@@ -94,6 +96,7 @@ const SOURCE_STYLES = {
   c2:            { colorClass: 'feed-item__source--red',           badge: 'C2' },
   ncsc:          { colorClass: 'feed-item__source--blue',          badge: 'NCSC' },
   breach:        { colorClass: 'feed-item__source--analysis',      badge: 'BREACH' },
+  osint:         { colorClass: 'feed-item__source--osint',         badge: 'OSINT' },
 };
 
 function getSourceStyle(item) {
@@ -178,6 +181,35 @@ function summarizeDescription(desc) {
   return clean;
 }
 
+function clipSentence(text, maxChars) {
+  if (text.length <= maxChars) return text;
+  const clipped = text.slice(0, maxChars);
+  const lastSpace = clipped.lastIndexOf(' ');
+  return (lastSpace > 40 ? clipped.slice(0, lastSpace) : clipped).trim() + '...';
+}
+
+function summarizeCyberDescription(desc) {
+  const clean = (desc || '').replace(/\r/g, '').trim();
+  if (!clean) return '';
+
+  if (clean.includes('\n')) {
+    return clean
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .slice(0, CYBER_CARD_MAX_LINES)
+      .map(line => clipSentence(line, 70))
+      .join('\n');
+  }
+
+  const compact = clean.replace(/\s+/g, ' ').trim();
+  const sentences = compact.match(/[^.!?]+[.!?]+["')\]]*/g)?.map(s => s.trim()).filter(Boolean) || [];
+  if (sentences.length) {
+    return clipSentence(sentences[0], CYBER_CARD_MAX_CHARS);
+  }
+  return clipSentence(compact, CYBER_CARD_MAX_CHARS);
+}
+
 /* ── Rendering ────────────────────────────────────────── */
 
 function createItemHTML(item, defaultColorClass, highlight = false, isNew = false, dimByAge = true) {
@@ -208,8 +240,8 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
   const desc = item.description
     ? item.description.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
     : '';
-  const preview = item.sourceType === 'cyber'
-    ? desc
+  const preview = (item.sourceType === 'cyber' || item.sourceType === 'osint')
+    ? summarizeCyberDescription(desc)
     : summarizeDescription(desc);
   let descClass = 'feed-item__desc';
   if (item.sourceType === 'cyber') descClass += ' feed-item__desc--cyber';
@@ -275,6 +307,27 @@ function renderCyberFeed(containerId, items) {
   }).join('');
   renderedFeedItems.set(containerId, nextKeys);
   container.innerHTML = html;
+}
+
+function renderOsintFeed(containerId, items) {
+  const container = document.getElementById(containerId);
+  const previousKeys = renderedFeedItems.get(containerId);
+
+  if (!items.length) {
+    renderedFeedItems.set(containerId, new Set());
+    container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No recent OSINT updates</span></div>';
+    return;
+  }
+
+  const orderedItems = items.slice()
+    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+  const nextKeys = new Set(orderedItems.map(itemKey));
+  container.innerHTML = orderedItems.map(item => {
+    const isNew = Boolean(previousKeys && !previousKeys.has(itemKey(item)));
+    return createItemHTML(item, 'feed-item__source--osint', false, isNew, false);
+  }).join('');
+  renderedFeedItems.set(containerId, nextKeys);
 }
 
 function destroyFeedScroller(scrollEl) {
@@ -448,6 +501,7 @@ async function refreshDashboard() {
     renderFeed('items-aoi-zambia', aoi.zambia || [], 'feed-item__source--amber');
     renderFeed('items-aoi-panama', aoi.panama || [], 'feed-item__source--amber');
     renderFeed('items-global', data.global || [], 'feed-item__source--blue');
+    renderOsintFeed('items-osint', data.osint || []);
     renderCyberFeed('items-cyber', data.cyber || []);
 
     updateInfocon(data.threatLevel);

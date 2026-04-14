@@ -11,6 +11,38 @@
 </head>
 <body>
   <header class="header">
+    <section class="clocks" id="clocks">
+      <div class="clock" data-tz="America/Panama">
+        <span class="clock__city">Panama City</span>
+        <span class="clock__time"></span>
+        <span class="clock__date"></span>
+      </div>
+      <div class="clock" data-tz="America/New_York">
+        <span class="clock__city">Nassau/NYC</span>
+        <span class="clock__time"></span>
+        <span class="clock__date"></span>
+      </div>
+      <div class="clock" data-tz="Europe/London">
+        <span class="clock__city">London</span>
+        <span class="clock__time"></span>
+        <span class="clock__date"></span>
+      </div>
+      <div class="clock" data-tz="Europe/Rome">
+        <span class="clock__city">Rome</span>
+        <span class="clock__time"></span>
+        <span class="clock__date"></span>
+      </div>
+      <div class="clock" data-tz="Asia/Jerusalem">
+        <span class="clock__city">Tel Aviv</span>
+        <span class="clock__time"></span>
+        <span class="clock__date"></span>
+      </div>
+      <div class="clock" data-tz="Africa/Lusaka">
+        <span class="clock__city">Lusaka</span>
+        <span class="clock__time"></span>
+        <span class="clock__date"></span>
+      </div>
+    </section>
     <div class="header__brand">
       <img src="https://images.squarespace-cdn.com/content/v1/68ea6f748ff56267a49c5342/f99c07bb-eec5-4e0d-9366-93c35ef41c88/NQ-Wordmark_AW.png?format=1500w"
            alt="North Quay" class="header__logo">
@@ -22,31 +54,10 @@
     </div>
   </header>
 
-  <section class="clocks" id="clocks">
-    <div class="clock" data-tz="America/Panama">
-      <span class="clock__city">Panama City</span>
-      <span class="clock__time"></span>
-      <span class="clock__date"></span>
-    </div>
-    <div class="clock" data-tz="America/New_York">
-      <span class="clock__city">Nassau/NYC</span>
-      <span class="clock__time"></span>
-      <span class="clock__date"></span>
-    </div>
-    <div class="clock" data-tz="Europe/London">
-      <span class="clock__city">London</span>
-      <span class="clock__time"></span>
-      <span class="clock__date"></span>
-    </div>
-    <div class="clock" data-tz="Europe/Rome">
-      <span class="clock__city">Rome</span>
-      <span class="clock__time"></span>
-      <span class="clock__date"></span>
-    </div>
-    <div class="clock" data-tz="Africa/Lusaka">
-      <span class="clock__city">Lusaka</span>
-      <span class="clock__time"></span>
-      <span class="clock__date"></span>
+  <section class="osint" id="feed-osint">
+    <h2 class="feed__heading feed__heading--osint">OSINT Updates</h2>
+    <div class="feed__scroll feed__scroll--horizontal" id="scroll-osint">
+      <div class="feed__items feed__items--horizontal" id="items-osint"></div>
     </div>
   </section>
 

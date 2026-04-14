@@ -43,6 +43,16 @@ const UN_PEACE_URL = 'https://news.un.org/feed/subscribe/en/news/topic/peace-and
 const UN_AFRICA_URL = 'https://news.un.org/feed/subscribe/en/news/region/africa/feed/rss.xml';
 const ICRC_URL = 'https://www.icrc.org/en/rss/news';
 
+/* ── OSINT: blogs & research feeds ─────────────────────── */
+
+const OSINT_RSS_FEEDS = [
+  { name: 'OSINT Industries', url: 'https://www.osint.industries/blog/feed/', sourceType: 'osint' },
+  { name: 'Knowmad OSINT', url: 'https://knowmad-osint.com/blog/feed/', sourceType: 'osint' },
+  { name: 'Bellingcat Resources', url: 'https://www.bellingcat.com/category/resources/feed/', sourceType: 'osint' },
+  { name: 'Bellingcat News', url: 'https://www.bellingcat.com/category/news/feed/', sourceType: 'osint' },
+  { name: 'Bendobrown', url: 'https://www.youtube.com/feeds/videos.xml?user=Bendobrown', sourceType: 'osint' },
+];
+
 /* ── Cyber: RSS feeds ──────────────────────────────────── */
 
 const CYBER_RSS_FEEDS = [
@@ -78,13 +88,14 @@ const NON_GEOPOLITICAL = /\b(football|soccer|cricket|rugby|tennis|boxing|UFC|MMA
 /* ── Helpers ────────────────────────────────────────────── */
 
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const OSINT_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
 
-function isRecent(dateStr) {
+function isRecent(dateStr, maxAgeMs = MAX_AGE_MS) {
   if (!dateStr) return false;
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return false;
-  return (Date.now() - d.getTime()) < MAX_AGE_MS;
+  return (Date.now() - d.getTime()) < maxAgeMs;
 }
 
 function stripHtml(html) {
@@ -154,7 +165,7 @@ function normalizeTitle(title) {
 
 /* ── RSS Parsing ───────────────────────────────────────── */
 
-function parseRss(xml, feedName, sourceType) {
+function parseRss(xml, feedName, sourceType, maxAgeMs = MAX_AGE_MS) {
   try {
     const doc = parser.parse(xml);
     const channel = doc.rss?.channel || doc.feed;
@@ -181,19 +192,19 @@ function parseRss(xml, feedName, sourceType) {
         description,
         pubDate: validDate,
       };
-    }).filter(i => i.title && i.pubDate && isRecent(i.pubDate));
+    }).filter(i => i.title && i.pubDate && isRecent(i.pubDate, maxAgeMs));
   } catch (err) {
     console.error('RSS parse error:', err.message || err);
     return [];
   }
 }
 
-async function fetchRssFeed(url, feedName, sourceType, cacheTtl = 900) {
+async function fetchRssFeed(url, feedName, sourceType, cacheTtl = 900, maxAgeMs = MAX_AGE_MS) {
   try {
     const res = await fetch(url, { cf: { cacheTtl, cacheEverything: true } });
     if (!res.ok) return [];
     const xml = await res.text();
-    return parseRss(xml, feedName, sourceType);
+    return parseRss(xml, feedName, sourceType, maxAgeMs);
   } catch (err) {
     console.error(`${feedName} fetch error:`, err.message || err);
     return [];
@@ -554,6 +565,7 @@ export async function onRequestGet(context) {
     unPeaceItems,
     unAfricaItems,
     icrcItems,
+    osintItems,
     cyberRssItems,
     ncscItems,
     hibpItems,
@@ -575,6 +587,7 @@ export async function onRequestGet(context) {
     fetchRssFeed(UN_PEACE_URL, 'UN News', 'conflict', 900),
     fetchRssFeed(UN_AFRICA_URL, 'UN Africa', 'conflict', 900),
     fetchRssFeed(ICRC_URL, 'ICRC', 'conflict', 1800),
+    Promise.all(OSINT_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, f.sourceType, 1800, OSINT_MAX_AGE_MS))).then(r => r.flat()),
     Promise.all(CYBER_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, 'cyber'))).then(r => r.flat()),
     fetchRssFeed(NCSC_URL, 'NCSC UK', 'ncsc'),
     fetchRssFeed(HIBP_URL, 'HIBP', 'breach'),
@@ -628,6 +641,10 @@ export async function onRequestGet(context) {
   ]).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
     .slice(0, 30);
 
+  const osint = deduplicate(osintItems)
+    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+    .slice(0, 24);
+
   // Cyber: prioritize KEV/NCSC > Breaches > IOC/C2 > news articles
   const kevDeduped = deduplicate([...kevItems, ...ncscItems]);
   const breachDeduped = deduplicate(hibpItems)
@@ -663,6 +680,7 @@ export async function onRequestGet(context) {
   const body = JSON.stringify({
     aoi: { uk: aoiUk, zambia: aoiZambia, panama: aoiPanama },
     global,
+    osint,
     cyber,
     cyberStats,
     threatLevel,
