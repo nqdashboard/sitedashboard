@@ -259,7 +259,8 @@ async function fetchUSGS() {
     if (!data.features) return [];
     return data.features.map(f => {
       const p = f.properties;
-      const mag = p.mag ? p.mag.toFixed(1) : '?';
+      const magnitude = typeof p.mag === 'number' ? p.mag : null;
+      const mag = magnitude != null ? magnitude.toFixed(1) : '?';
       const place = p.place || 'Unknown location';
       const tsunami = p.tsunami ? ' [TSUNAMI WARNING]' : '';
       return {
@@ -269,8 +270,14 @@ async function fetchUSGS() {
         link: p.url || '#',
         description: `Magnitude ${mag} earthquake at ${Math.round(f.geometry.coordinates[2])}km depth.`,
         pubDate: new Date(p.time).toISOString(),
+        _magnitude: magnitude,
+        _place: place,
       };
-    }).filter(i => isRecent(i.pubDate));
+    }).filter(i => {
+      if (!isRecent(i.pubDate) || i._magnitude == null) return false;
+      if (i._magnitude >= 5.5) return true;
+      return AOI_UK.test(i._place) || AOI_PANAMA.test(i._place) || AOI_ZAMBIA.test(i._place);
+    });
   } catch (err) {
     console.error('USGS fetch error:', err.message || err);
     return [];
