@@ -310,7 +310,7 @@ body {
 
 .feed-item__desc--cyber {
   overflow: hidden;
-  max-height: calc(1.35em * 4);
+  max-height: calc(1.32em * 2);
 }
 
 .feed-item__desc--preformatted {
@@ -319,9 +319,9 @@ body {
 
 .feed-item__desc--cyber.feed-item__desc--preformatted {
   color: var(--text);
-  font-size: 0.74rem;
-  line-height: 1.35;
-  max-height: calc(1.35em * 3);
+  font-size: 0.72rem;
+  line-height: 1.32;
+  max-height: calc(1.32em * 2);
 }
 
 .feed-item--osint .feed-item__source {

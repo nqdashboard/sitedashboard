@@ -8,8 +8,8 @@ const GLOBAL_FEED_SCROLL_SPEED_MULTIPLIER = 0.5;
 const FEED_INTERACTION_PAUSE = 12000;          // 12 seconds
 const FEED_EDGE_PAUSE = 2500;                  // 2.5 seconds
 const PREVIEW_TWO_SENTENCE_MAX = 240;
-const CYBER_CARD_MAX_CHARS = 190;
-const CYBER_CARD_MAX_LINES = 3;
+const CYBER_CARD_MAX_CHARS = 120;
+const CYBER_CARD_MAX_LINES = 2;
 let consecutiveFailures = 0;
 const feedScrollers = new WeakMap();
 const renderedFeedItems = new Map();
@@ -198,16 +198,13 @@ function summarizeCyberDescription(desc) {
       .map(line => line.trim())
       .filter(Boolean)
       .slice(0, CYBER_CARD_MAX_LINES)
-      .map(line => clipSentence(line, 70))
+      .map(line => clipSentence(line, 58))
       .join('\n');
   }
 
   const compact = clean.replace(/\s+/g, ' ').trim();
-  const sentences = compact.match(/[^.!?]+[.!?]+["')\]]*/g)?.map(s => s.trim()).filter(Boolean) || [];
-  if (sentences.length) {
-    return clipSentence(sentences[0], CYBER_CARD_MAX_CHARS);
-  }
-  return clipSentence(compact, CYBER_CARD_MAX_CHARS);
+  const firstSentence = compact.match(/[^.!?]+[.!?]+["')\]]*/)?.[0]?.trim();
+  return clipSentence(firstSentence || compact, CYBER_CARD_MAX_CHARS);
 }
 
 /* ── Rendering ────────────────────────────────────────── */
