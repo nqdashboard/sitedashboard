@@ -81,6 +81,7 @@ const CISA_KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_explo
 const THREATFOX_URL = 'https://threatfox.abuse.ch/export/json/recent/';
 const FEODO_URL = 'https://feodotracker.abuse.ch/downloads/ipblocklist.json';
 const SANS_INFOCON_URL = 'https://isc.sans.edu/api/infocon?json';
+const RANSOMWARE_LIVE_URL = 'https://api.ransomware.live/v2/recentvictims';
 
 /* ── AOI Country Filters (for ACLED/ReliefWeb routing) ── */
 
@@ -162,6 +163,14 @@ function parseDateValue(value) {
 
 function normalizeTitle(title) {
   return (title || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+}
+
+function truncateText(text, maxLength = 180) {
+  const value = (text || '').trim();
+  if (value.length <= maxLength) return value;
+  const clipped = value.slice(0, maxLength);
+  const lastSpace = clipped.lastIndexOf(' ');
+  return `${(lastSpace > 60 ? clipped.slice(0, lastSpace) : clipped).trim()}...`;
 }
 
 function isLowSignalHumanitarianItem(item) {
@@ -542,6 +551,51 @@ async function fetchFeodoTracker(authKey) {
   }
 }
 
+async function fetchRansomwareLive() {
+  try {
+    const res = await fetch(RANSOMWARE_LIVE_URL, { cf: { cacheTtl: 900, cacheEverything: true } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .map(entry => {
+        const pubDate = parseDateValue(
+          entry.discovered || entry.discovered_at || entry.attackdate || entry.date || entry.updated_at || entry.last_seen,
+        );
+        const victim = stripHtml(entry.victim || entry.name || entry.company || '');
+        const group = stripHtml(entry.group || entry.ransomware || 'Unknown group');
+        const country = stripHtml(entry.country || entry.country_name || '');
+        const sector = stripHtml(entry.activity || entry.sector || entry.industry || '');
+        const details = Array.isArray(entry.description)
+          ? entry.description.join(' ')
+          : stripHtml(entry.description || entry.summary || '');
+        const severityBits = [];
+        if (typeof entry.nb_files === 'number' && entry.nb_files > 0) severityBits.push(`${entry.nb_files} files listed`);
+        if (typeof entry.views === 'number' && entry.views > 0) severityBits.push(`${entry.views} views`);
+        if (entry.infostealer) severityBits.push('Infostealer data present');
+
+        return {
+          source: 'Ransomware.live',
+          sourceType: 'breach',
+          title: victim ? `${victim} — ${group}` : `${group} victim listing`,
+          link: entry.post_url || entry.url || entry.link || 'https://www.ransomware.live/',
+          description: truncateText([
+            country ? `Country: ${country}` : '',
+            sector ? `Sector: ${sector}` : '',
+            severityBits.join(' • '),
+            details,
+          ].filter(Boolean).join('. ')),
+          pubDate,
+        };
+      })
+      .filter(item => item.title && item.pubDate && isRecent(item.pubDate));
+  } catch (err) {
+    console.error('Ransomware.live error:', err.message || err);
+    return [];
+  }
+}
+
 /* ── SANS ISC InfoCon — threat level indicator ─────────── */
 
 async function fetchSansInfocon() {
@@ -609,6 +663,7 @@ export async function onRequestGet(context) {
     kevItems,
     threatFoxItems,
     feodoItems,
+    ransomwareLiveItems,
     threatLevel,
   ] = await Promise.all([
     fetchGdelt(GDELT_GLOBAL_URL),
@@ -630,6 +685,7 @@ export async function onRequestGet(context) {
     fetchCisaKev(),
     fetchThreatFox(abusechKey),
     fetchFeodoTracker(abusechKey),
+    fetchRansomwareLive(),
     fetchSansInfocon(),
   ]);
 
@@ -689,6 +745,7 @@ export async function onRequestGet(context) {
     ...hibpItems,
     ...threatFoxItems,
     ...feodoItems,
+    ...ransomwareLiveItems,
     ...cyberRssItems,
   ])
     .filter(i => isRecent(i.pubDate))
