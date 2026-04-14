@@ -52,6 +52,7 @@ const OSINT_RSS_FEEDS = [
   { name: 'Bellingcat News', url: 'https://www.bellingcat.com/category/news/feed/', sourceType: 'osint' },
   { name: 'Bendobrown', url: 'https://www.youtube.com/feeds/videos.xml?user=Bendobrown', sourceType: 'osint' },
   { name: 'Benjamin Strick', url: 'https://benjaminstrick.com/feed', sourceType: 'osint' },
+  { name: 'OSINTech', url: 'https://osintech.substack.com/feed', sourceType: 'osint' },
   { name: 'OSINT Newsletter', url: 'https://osintnewsletter.com/feed', sourceType: 'osint' },
   { name: 'Offensive OSINT', url: 'https://www.offensiveosint.io/rss/', sourceType: 'osint' },
   { name: 'Nixintel', url: 'https://nixintel.info/feed/', sourceType: 'osint' },
