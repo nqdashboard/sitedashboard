@@ -101,7 +101,16 @@ function isRecent(dateStr, maxAgeMs = MAX_AGE_MS) {
 function stripHtml(html) {
   if (!html) return '';
   const s = typeof html === 'string' ? html : String(html);
-  return s.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim().slice(0, 300);
+  return s
+    .replace(/<[^>]*>/g, '')
+    .replace(/&#8217;|&#39;|&rsquo;/gi, "'")
+    .replace(/&#8211;|&#8212;|&ndash;|&mdash;/gi, '-')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#8220;|&#8221;/gi, '"')
+    .replace(/&[^;]+;/g, ' ')
+    .trim()
+    .slice(0, 300);
 }
 
 function stripUrls(text) {

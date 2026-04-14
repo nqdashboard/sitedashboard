@@ -217,16 +217,17 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
   const highlightClass = highlight ? ' feed-item--highlight' : '';
   const newClass = isNew ? ' feed-item--new' : '';
   const ageClassName = dimByAge ? ageClass(item.pubDate) : '';
+  const isOsint = item.sourceType === 'osint';
 
   const style = getSourceStyle(item);
   const colorClass = style.colorClass || defaultColorClass;
-  const badgeHTML = style.badge
+  const badgeHTML = !isOsint && style.badge
     ? `<span class="feed-item__badge feed-item__badge--${item.sourceType}">${style.badge}</span>`
     : '';
 
   const text = item.title + ' ' + (item.description || '');
   const flags = detectFlags(text);
-  const flagsHTML = flags.length
+  const flagsHTML = !isOsint && flags.length
     ? `<span class="feed-item__flags">${flags.join('')}</span>`
     : '';
 
