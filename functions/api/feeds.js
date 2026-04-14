@@ -97,6 +97,10 @@ function stripUrls(text) {
   return (text || '')
     .replace(/https?:\/\/\S+/gi, '')
     .replace(/\bwww\.\S+\b/gi, '')
+    .replace(/\b[a-z0-9.-]+\.[a-z]{2,}\S*[/?=]\S*/gi, '')
+    .replace(/\butm_[a-z0-9_]+=\S*/gi, '')
+    .replace(/\b[a-z0-9_]+=%[0-9a-f]{2}\S*/gi, '')
+    .replace(/\S*%[0-9a-f]{2}\S*/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -105,6 +109,8 @@ function formatCyberPostText(text) {
   const cleaned = stripUrls(text)
     .replace(/([!?])(?=[A-Z#])/g, '$1 ')
     .replace(/(Victim:|Group:|Discovered:|Country:|Sector:|Leak site:|Location:)/g, '\n$1')
+    .replace(/Track latest.*$/i, '')
+    .replace(/Look up.*$/i, '')
     .replace(/\n+/g, '\n')
     .trim();
 
@@ -158,10 +164,13 @@ function parseRss(xml, feedName, sourceType) {
     if (!Array.isArray(items)) items = [items];
 
     return items.map(item => {
-      const title = item.title || '';
+      const rawTitle = item.title || '';
       const link = item.link?.['@_href'] || item.link || '';
       const pubDate = item.pubDate || item.published || item.updated || item['dc:date'] || item['atom:updated'] || item['atom:published'] || null;
-      const description = stripHtml(item.description || item.summary || item.content || '');
+      const title = sourceType === 'cyber' ? stripUrls(stripHtml(rawTitle)) : rawTitle;
+      const description = sourceType === 'cyber'
+        ? stripUrls(stripHtml(item.description || item.summary || item.content || ''))
+        : stripHtml(item.description || item.summary || item.content || '');
       const validDate = parseDateValue(pubDate);
 
       return {

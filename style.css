@@ -296,15 +296,24 @@ body {
   font-size: 0.7rem;
   color: var(--text-muted);
   line-height: 1.3;
-  overflow: hidden;
   white-space: normal;
   max-width: 100%;
-  max-height: calc(1.3em * 2);
+}
+
+.feed-item__desc--cyber {
+  overflow: hidden;
+  max-height: calc(1.35em * 4);
 }
 
 .feed-item__desc--preformatted {
   white-space: pre-line;
-  max-height: none;
+}
+
+.feed-item__desc--cyber.feed-item__desc--preformatted {
+  color: var(--text);
+  font-size: 0.74rem;
+  line-height: 1.35;
+  max-height: calc(1.35em * 3);
 }
 
 .feed-item--highlight {

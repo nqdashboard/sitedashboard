@@ -211,9 +211,9 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
   const preview = item.sourceType === 'cyber'
     ? desc
     : summarizeDescription(desc);
-  const descClass = preview.includes('\n')
-    ? 'feed-item__desc feed-item__desc--preformatted'
-    : 'feed-item__desc';
+  let descClass = 'feed-item__desc';
+  if (item.sourceType === 'cyber') descClass += ' feed-item__desc--cyber';
+  if (preview.includes('\n')) descClass += ' feed-item__desc--preformatted';
   const descHTML = preview
     ? `<p class="${descClass}">${escapeHtml(preview)}</p>`
     : '';
