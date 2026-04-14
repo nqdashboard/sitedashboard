@@ -7,8 +7,7 @@ const FEED_SCROLL_SPEED = 0.012;               // px per ms
 const GLOBAL_FEED_SCROLL_SPEED_MULTIPLIER = 0.5;
 const FEED_INTERACTION_PAUSE = 12000;          // 12 seconds
 const FEED_EDGE_PAUSE = 2500;                  // 2.5 seconds
-const PREVIEW_FIRST_LINE_TARGET = 130;
-const PREVIEW_TWO_LINE_MAX = 240;
+const PREVIEW_TWO_SENTENCE_MAX = 240;
 let consecutiveFailures = 0;
 const feedScrollers = new WeakMap();
 const renderedFeedItems = new Map();
@@ -156,46 +155,33 @@ function itemKey(item) {
   ].join('||');
 }
 
+function escapeHtml(text) {
+  return (text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function summarizeDescription(desc) {
   const clean = (desc || '').replace(/\s+/g, ' ').trim();
   if (!clean) return '';
-  if (clean.length <= PREVIEW_TWO_LINE_MAX) return clean;
+  const sentences = clean.match(/[^.!?]+[.!?]+["')\]]*/g)?.map(s => s.trim()).filter(Boolean) || [];
+  if (!sentences.length) return clean;
 
-  const sentences = clean.split(/(?<=[.!?])\s+/).filter(Boolean);
-  if (!sentences.length) {
-    return clean.slice(0, PREVIEW_TWO_LINE_MAX - 3).trim() + '...';
+  const firstSentence = sentences[0] || '';
+  const firstTwoSentences = sentences.slice(0, 2).join(' ').trim();
+
+  if (firstTwoSentences && firstTwoSentences.length <= PREVIEW_TWO_SENTENCE_MAX) {
+    return firstTwoSentences;
   }
-
-  let summary = '';
-
-  for (const sentence of sentences) {
-    const candidate = summary ? `${summary} ${sentence}` : sentence;
-    if (candidate.length > PREVIEW_TWO_LINE_MAX) break;
-    summary = candidate;
-    if (summary.length >= PREVIEW_FIRST_LINE_TARGET) break;
-  }
-
-  if (!summary) {
-    return clean.slice(0, PREVIEW_TWO_LINE_MAX - 3).trim() + '...';
-  }
-
-  const usedCount = summary.split(/(?<=[.!?])\s+/).filter(Boolean).length;
-  const nextSentence = sentences[usedCount];
-  if (nextSentence) {
-    const extended = `${summary} ${nextSentence}`;
-    if (extended.length <= PREVIEW_TWO_LINE_MAX) {
-      summary = extended;
-    }
-  }
-
-  return summary;
+  if (firstSentence) return firstSentence;
+  return clean;
 }
 
 /* ── Rendering ────────────────────────────────────────── */
 
 function createItemHTML(item, defaultColorClass, highlight = false, isNew = false, dimByAge = true) {
-  const escapedTitle = item.title
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const escapedTitle = escapeHtml(item.title || '');
   const highlightClass = highlight ? ' feed-item--highlight' : '';
   const newClass = isNew ? ' feed-item--new' : '';
   const ageClassName = dimByAge ? ageClass(item.pubDate) : '';
@@ -222,9 +208,14 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
   const desc = item.description
     ? item.description.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
     : '';
-  const preview = summarizeDescription(desc);
+  const preview = item.sourceType === 'cyber'
+    ? desc
+    : summarizeDescription(desc);
+  const descClass = preview.includes('\n')
+    ? 'feed-item__desc feed-item__desc--preformatted'
+    : 'feed-item__desc';
   const descHTML = preview
-    ? `<p class="feed-item__desc">${preview}</p>`
+    ? `<p class="${descClass}">${escapeHtml(preview)}</p>`
     : '';
 
   return `

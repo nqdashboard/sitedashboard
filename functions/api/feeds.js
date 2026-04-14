@@ -93,6 +93,28 @@ function stripHtml(html) {
   return s.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim().slice(0, 300);
 }
 
+function stripUrls(text) {
+  return (text || '')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\bwww\.\S+\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function formatCyberPostText(text) {
+  const cleaned = stripUrls(text)
+    .replace(/([!?])(?=[A-Z#])/g, '$1 ')
+    .replace(/(Victim:|Group:|Discovered:|Country:|Sector:|Leak site:|Location:)/g, '\n$1')
+    .replace(/\n+/g, '\n')
+    .trim();
+
+  return cleaned
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
 function extractText(value) {
   if (!value) return '';
   if (typeof value === 'string') return value;
@@ -341,14 +363,16 @@ async function fetchMastodonInfosec() {
 
     return posts
       .map(post => {
-        const text = (post.content || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
-        const title = text.slice(0, 140) + (text.length > 140 ? '...' : '');
+        const text = formatCyberPostText((post.content || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim());
+        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+        const title = lines[0] || '';
+        const description = lines.slice(1).join('\n');
         return {
           source: post.account?.display_name || post.account?.username || 'infosec.exchange',
           sourceType: 'cyber',
           title,
           link: post.url || post.uri || '#',
-          description: '',
+          description,
           pubDate: post.created_at ? new Date(post.created_at).toISOString() : new Date().toISOString(),
           _fullText: text,
         };
