@@ -324,6 +324,7 @@ body {
 }
 
 .feed-item__desc--ransom.feed-item__desc--preformatted {
+  color: var(--text-muted);
   max-height: calc(1.32em * 4);
 }
 

@@ -220,6 +220,26 @@ function summarizeExposure(exposure) {
   return parts.slice(0, 2).join(' • ');
 }
 
+function summarizeImpactedPeople(entry) {
+  const candidates = [
+    ['people', entry.people],
+    ['employees', entry.employees],
+    ['customers', entry.customers],
+    ['records', entry.records],
+    ['users', entry.users],
+    ['clients', entry.clients],
+    ['victims', entry.victims_count],
+    ['impact', entry.nb_files],
+  ];
+
+  const parts = candidates
+    .filter(([, value]) => value !== null && value !== undefined && value !== '' && value !== 0)
+    .slice(0, 2)
+    .map(([label, value]) => `${label}: ${value}`);
+
+  return parts.join(' • ');
+}
+
 function isLowSignalHumanitarianItem(item) {
   const text = `${item.title || ''} ${item.description || ''}`.toLowerCase();
   return /\b(survey|country brief|weekly market report|thematic brief|assessment|factsheet|fact sheet|dashboard|snapshot|round \d+|octubre|febrero)\b/i.test(text);
@@ -613,11 +633,10 @@ async function fetchRansomwareLive() {
         const victim = stripHtml(entry.victim || entry.name || entry.company || '');
         const group = stripHtml(entry.group || entry.ransomware || 'Unknown group');
         const country = expandCountryCode(entry.country || entry.country_name || '');
-        const sector = stripHtml(entry.activity || entry.sector || entry.industry || '');
         const details = Array.isArray(entry.description)
           ? entry.description.join(' ')
           : stripHtml(entry.description || entry.summary || '');
-        const companyInfo = stripHtml(entry.activity || entry.description_company || entry.company_description || '');
+        const companyInfo = stripHtml(entry.description_company || entry.company_description || '');
         const severityBits = [];
         if (typeof entry.nb_files === 'number' && entry.nb_files > 0) severityBits.push(`${entry.nb_files} files listed`);
         if (typeof entry.views === 'number' && entry.views > 0) severityBits.push(`${entry.views} views`);
@@ -625,13 +644,13 @@ async function fetchRansomwareLive() {
         if (Array.isArray(entry.updates) && entry.updates.length > 0) severityBits.push(`${entry.updates.length} update(s)`);
         if (entry.infostealer) severityBits.push('Infostealer data present');
         const exposureSummary = summarizeExposure(entry.infostealer || entry.exposed || entry.impact);
+        const peopleSummary = summarizeImpactedPeople(entry);
+        const impactSummary = [peopleSummary, severityBits.join(' • '), exposureSummary].filter(Boolean).join(' • ');
+        const oneLiner = truncateText(companyInfo || details, 105);
         const descriptionLines = [
           country ? `Country: ${country}` : '',
-          sector ? `Sector: ${sector}` : '',
-          severityBits.length ? `Severity: ${severityBits.join(' • ')}` : '',
-          exposureSummary ? `Exposure: ${exposureSummary}` : '',
-          companyInfo ? `Profile: ${truncateText(companyInfo, 90)}` : '',
-          details ? `Note: ${truncateText(details, 110)}` : '',
+          impactSummary ? `Impact: ${impactSummary}` : '',
+          oneLiner ? `Note: ${oneLiner}` : '',
         ].filter(Boolean);
 
         return {

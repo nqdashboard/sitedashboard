@@ -99,7 +99,7 @@ const SOURCE_STYLES = {
   c2:            { colorClass: 'feed-item__source--red',           badge: 'C2' },
   ncsc:          { colorClass: 'feed-item__source--blue',          badge: 'NCSC' },
   breach:        { colorClass: 'feed-item__source--analysis',      badge: 'BREACH' },
-  ransom:        { colorClass: 'feed-item__source--red',           badge: 'BREACH' },
+  ransom:        { colorClass: 'feed-item__source--red',           badge: null },
   osint:         { colorClass: 'feed-item__source--osint',         badge: 'OSINT' },
 };
 
