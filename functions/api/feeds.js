@@ -163,6 +163,11 @@ function normalizeTitle(title) {
   return (title || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 }
 
+function isLowSignalHumanitarianItem(item) {
+  const text = `${item.title || ''} ${item.description || ''}`.toLowerCase();
+  return /\b(survey|country brief|weekly market report|thematic brief|assessment|factsheet|fact sheet|dashboard|snapshot|round \d+|octubre|febrero)\b/i.test(text);
+}
+
 function needsEnglishTranslation(text) {
   if (!text) return false;
 
@@ -407,7 +412,7 @@ async function fetchReliefWeb(env) {
     const data = await res.json();
     if (!data.data?.length) return [];
 
-    return data.data.map(report => {
+    const items = data.data.map(report => {
       const fields = report.fields;
       const country = fields.primary_country?.name || '';
       const disasterType = fields.disaster_type?.map(d => d.name).join(', ') || '';
@@ -423,7 +428,9 @@ async function fetchReliefWeb(env) {
         pubDate: fields.date?.created ? new Date(fields.date.created).toISOString() : new Date().toISOString(),
         _country: country,
       };
-    }).filter(i => i.title && isRecent(i.pubDate));
+    }).filter(i => i.title && isRecent(i.pubDate) && !isLowSignalHumanitarianItem(i));
+
+    return await translateItemsToEnglish(items);
   } catch (err) {
     console.error('ReliefWeb fetch error:', err.message || err);
     return [];
