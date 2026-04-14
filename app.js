@@ -99,6 +99,7 @@ const SOURCE_STYLES = {
   c2:            { colorClass: 'feed-item__source--red',           badge: 'C2' },
   ncsc:          { colorClass: 'feed-item__source--blue',          badge: 'NCSC' },
   breach:        { colorClass: 'feed-item__source--analysis',      badge: 'BREACH' },
+  ransom:        { colorClass: 'feed-item__source--red',           badge: 'BREACH' },
   osint:         { colorClass: 'feed-item__source--osint',         badge: 'OSINT' },
 };
 
@@ -191,7 +192,7 @@ function clipSentence(text, maxChars) {
   return (lastSpace > 40 ? clipped.slice(0, lastSpace) : clipped).trim() + '...';
 }
 
-function summarizeCyberDescription(desc) {
+function summarizeCyberDescription(desc, maxLines = CYBER_CARD_MAX_LINES, maxChars = CYBER_CARD_MAX_CHARS) {
   const clean = (desc || '').replace(/\r/g, '').trim();
   if (!clean) return '';
 
@@ -200,14 +201,14 @@ function summarizeCyberDescription(desc) {
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
-      .slice(0, CYBER_CARD_MAX_LINES)
+      .slice(0, maxLines)
       .map(line => clipSentence(line, 58))
       .join('\n');
   }
 
   const compact = clean.replace(/\s+/g, ' ').trim();
   const firstSentence = compact.match(/[^.!?]+[.!?]+["')\]]*/)?.[0]?.trim();
-  return clipSentence(firstSentence || compact, CYBER_CARD_MAX_CHARS);
+  return clipSentence(firstSentence || compact, maxChars);
 }
 
 /* ── Rendering ────────────────────────────────────────── */
@@ -241,11 +242,16 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
   const desc = item.description
     ? item.description.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
     : '';
-  const preview = (item.sourceType === 'cyber' || item.sourceType === 'osint')
-    ? summarizeCyberDescription(desc)
+  const preview = (item.sourceType === 'cyber' || item.sourceType === 'osint' || item.sourceType === 'ransom')
+    ? summarizeCyberDescription(
+      desc,
+      item.sourceType === 'ransom' ? 4 : CYBER_CARD_MAX_LINES,
+      item.sourceType === 'ransom' ? 180 : CYBER_CARD_MAX_CHARS,
+    )
     : summarizeDescription(desc);
   let descClass = 'feed-item__desc';
-  if (item.sourceType === 'cyber') descClass += ' feed-item__desc--cyber';
+  if (item.sourceType === 'cyber' || item.sourceType === 'ransom') descClass += ' feed-item__desc--cyber';
+  if (item.sourceType === 'ransom') descClass += ' feed-item__desc--ransom';
   if (preview.includes('\n')) descClass += ' feed-item__desc--preformatted';
   const descHTML = preview
     ? `<p class="${descClass}">${escapeHtml(preview)}</p>`

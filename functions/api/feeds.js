@@ -83,6 +83,28 @@ const FEODO_URL = 'https://feodotracker.abuse.ch/downloads/ipblocklist.json';
 const SANS_INFOCON_URL = 'https://isc.sans.edu/api/infocon?json';
 const RANSOMWARE_LIVE_URL = 'https://api.ransomware.live/v2/recentvictims';
 
+const COUNTRY_CODE_NAMES = {
+  FR: 'France',
+  IT: 'Italy',
+  MX: 'Mexico',
+  TH: 'Thailand',
+  US: 'United States',
+  GB: 'United Kingdom',
+  UK: 'United Kingdom',
+  DE: 'Germany',
+  ES: 'Spain',
+  NL: 'Netherlands',
+  BE: 'Belgium',
+  CA: 'Canada',
+  AU: 'Australia',
+  BR: 'Brazil',
+  IN: 'India',
+  JP: 'Japan',
+  KR: 'South Korea',
+  SG: 'Singapore',
+  AE: 'United Arab Emirates',
+};
+
 /* ── AOI Country Filters (for ACLED/ReliefWeb routing) ── */
 
 const AOI_UK = /\b(UK|Britain|British|United Kingdom|England|English|Scotland|Scottish|Wales|Welsh|London|Manchester|Birmingham|Liverpool|Belfast|Edinburgh|Westminster|Northern Ireland)\b/i;
@@ -171,6 +193,31 @@ function truncateText(text, maxLength = 180) {
   const clipped = value.slice(0, maxLength);
   const lastSpace = clipped.lastIndexOf(' ');
   return `${(lastSpace > 60 ? clipped.slice(0, lastSpace) : clipped).trim()}...`;
+}
+
+function expandCountryCode(value) {
+  const text = stripHtml(value || '').trim();
+  if (!text) return '';
+  const upper = text.toUpperCase();
+  return COUNTRY_CODE_NAMES[upper] || text;
+}
+
+function summarizeExposure(exposure) {
+  if (!exposure || typeof exposure !== 'object') return '';
+  const parts = [];
+
+  for (const [key, rawValue] of Object.entries(exposure)) {
+    if (!rawValue) continue;
+    if (typeof rawValue === 'number') {
+      parts.push(`${key.replace(/_/g, ' ')}: ${rawValue}`);
+      continue;
+    }
+    if (typeof rawValue === 'string' && /\d/.test(rawValue)) {
+      parts.push(`${key.replace(/_/g, ' ')}: ${rawValue}`);
+    }
+  }
+
+  return parts.slice(0, 2).join(' • ');
 }
 
 function isLowSignalHumanitarianItem(item) {
@@ -565,27 +612,34 @@ async function fetchRansomwareLive() {
         );
         const victim = stripHtml(entry.victim || entry.name || entry.company || '');
         const group = stripHtml(entry.group || entry.ransomware || 'Unknown group');
-        const country = stripHtml(entry.country || entry.country_name || '');
+        const country = expandCountryCode(entry.country || entry.country_name || '');
         const sector = stripHtml(entry.activity || entry.sector || entry.industry || '');
         const details = Array.isArray(entry.description)
           ? entry.description.join(' ')
           : stripHtml(entry.description || entry.summary || '');
+        const companyInfo = stripHtml(entry.activity || entry.description_company || entry.company_description || '');
         const severityBits = [];
         if (typeof entry.nb_files === 'number' && entry.nb_files > 0) severityBits.push(`${entry.nb_files} files listed`);
         if (typeof entry.views === 'number' && entry.views > 0) severityBits.push(`${entry.views} views`);
+        if (Array.isArray(entry.press) && entry.press.length > 0) severityBits.push(`${entry.press.length} linked reports`);
+        if (Array.isArray(entry.updates) && entry.updates.length > 0) severityBits.push(`${entry.updates.length} update(s)`);
         if (entry.infostealer) severityBits.push('Infostealer data present');
+        const exposureSummary = summarizeExposure(entry.infostealer || entry.exposed || entry.impact);
+        const descriptionLines = [
+          country ? `Country: ${country}` : '',
+          sector ? `Sector: ${sector}` : '',
+          severityBits.length ? `Severity: ${severityBits.join(' • ')}` : '',
+          exposureSummary ? `Exposure: ${exposureSummary}` : '',
+          companyInfo ? `Profile: ${truncateText(companyInfo, 90)}` : '',
+          details ? `Note: ${truncateText(details, 110)}` : '',
+        ].filter(Boolean);
 
         return {
           source: 'Ransomware.live',
-          sourceType: 'breach',
+          sourceType: 'ransom',
           title: victim ? `${victim} — ${group}` : `${group} victim listing`,
           link: entry.post_url || entry.url || entry.link || 'https://www.ransomware.live/',
-          description: truncateText([
-            country ? `Country: ${country}` : '',
-            sector ? `Sector: ${sector}` : '',
-            severityBits.join(' • '),
-            details,
-          ].filter(Boolean).join('. ')),
+          description: descriptionLines.join('\n'),
           pubDate,
         };
       })
@@ -754,7 +808,7 @@ export async function onRequestGet(context) {
   // Cyber stats for OpenCTI-style summary
   const cyberStats = {
     kev: cyber.filter(i => i.sourceType === 'kev').length,
-    breach: cyber.filter(i => i.sourceType === 'breach').length,
+    breach: cyber.filter(i => i.sourceType === 'breach' || i.sourceType === 'ransom').length,
     ioc: cyber.filter(i => i.sourceType === 'ioc').length,
     c2: cyber.filter(i => i.sourceType === 'c2').length,
     ncsc: cyber.filter(i => i.sourceType === 'ncsc').length,
