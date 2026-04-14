@@ -35,9 +35,10 @@ body {
 
 /* ── Header ──────────────────────────────────────────── */
 .header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
+  gap: 24px;
   padding: 12px 24px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-panel);
@@ -52,6 +53,7 @@ body {
   gap: 4px;
   position: relative;
   z-index: 1;
+  grid-column: 2;
 }
 
 .header__logo {
@@ -104,12 +106,13 @@ body {
 .clocks {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  position: absolute;
-  inset: 12px 120px 10px 24px;
+  align-items: center;
   gap: 12px;
-  pointer-events: none;
+  min-width: 0;
 }
+
+.clocks--left { grid-column: 1; }
+.clocks--right { grid-column: 3; }
 
 .clock {
   display: flex;
@@ -118,7 +121,6 @@ body {
   gap: 2px;
   flex: 1;
   min-width: 0;
-  padding-top: 4px;
 }
 
 .clock__city {
@@ -328,7 +330,7 @@ body {
 }
 
 .feed-item--osint .feed-item__desc {
-  color: #c7d2fe;
+  color: var(--text);
 }
 
 .feed-item--highlight {
@@ -595,6 +597,8 @@ body {
 
 .osint .feed__heading {
   flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  box-shadow: inset 3px 0 0 #818cf8;
 }
 
 /* ── Footer ──────────────────────────────────────────── */

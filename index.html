@@ -11,7 +11,7 @@
 </head>
 <body>
   <header class="header">
-    <section class="clocks" id="clocks">
+    <section class="clocks clocks--left" id="clocks-left">
       <div class="clock" data-tz="America/Panama">
         <span class="clock__city">Panama City</span>
         <span class="clock__time"></span>
@@ -27,6 +27,13 @@
         <span class="clock__time"></span>
         <span class="clock__date"></span>
       </div>
+    </section>
+    <div class="header__brand">
+      <img src="https://images.squarespace-cdn.com/content/v1/68ea6f748ff56267a49c5342/f99c07bb-eec5-4e0d-9366-93c35ef41c88/NQ-Wordmark_AW.png?format=1500w"
+           alt="North Quay" class="header__logo">
+      <span class="header__subtitle">OPERATIONS ROOM</span>
+    </div>
+    <section class="clocks clocks--right" id="clocks-right">
       <div class="clock" data-tz="Europe/Rome">
         <span class="clock__city">Rome</span>
         <span class="clock__time"></span>
@@ -43,11 +50,6 @@
         <span class="clock__date"></span>
       </div>
     </section>
-    <div class="header__brand">
-      <img src="https://images.squarespace-cdn.com/content/v1/68ea6f748ff56267a49c5342/f99c07bb-eec5-4e0d-9366-93c35ef41c88/NQ-Wordmark_AW.png?format=1500w"
-           alt="North Quay" class="header__logo">
-      <span class="header__subtitle">OPERATIONS ROOM</span>
-    </div>
     <div class="header__status">
       <span class="status-dot" id="status-dot" title="Feed connection status"></span>
       <span id="last-updated" class="header__updated">Connecting...</span>
