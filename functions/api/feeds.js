@@ -51,6 +51,13 @@ const OSINT_RSS_FEEDS = [
   { name: 'Bellingcat Resources', url: 'https://www.bellingcat.com/category/resources/feed/', sourceType: 'osint' },
   { name: 'Bellingcat News', url: 'https://www.bellingcat.com/category/news/feed/', sourceType: 'osint' },
   { name: 'Bendobrown', url: 'https://www.youtube.com/feeds/videos.xml?user=Bendobrown', sourceType: 'osint' },
+  { name: 'Benjamin Strick', url: 'https://benjaminstrick.com/feed', sourceType: 'osint' },
+  { name: 'OSINT Newsletter', url: 'https://osintnewsletter.com/feed', sourceType: 'osint' },
+  { name: 'Offensive OSINT', url: 'https://www.offensiveosint.io/rss/', sourceType: 'osint' },
+  { name: 'Nixintel', url: 'https://nixintel.info/feed/', sourceType: 'osint' },
+  { name: 'IntelTechniques', url: 'https://inteltechniques.com/blog/feed/', sourceType: 'osint' },
+  { name: 'Authentic8', url: 'https://www.authentic8.com/blog/rss.xml', sourceType: 'osint' },
+  { name: 'SecJuice', url: 'https://www.secjuice.com/feed/', sourceType: 'osint' },
 ];
 
 /* ── Cyber: RSS feeds ──────────────────────────────────── */
@@ -66,7 +73,6 @@ const HIBP_URL = 'https://feeds.feedburner.com/HaveIBeenPwnedLatestBreaches';
 
 /* ── Cyber: Mastodon infosec.exchange ────────────────── */
 
-const MASTODON_INFOSEC_URL = 'https://infosec.exchange/api/v1/timelines/public?local=true&limit=40';
 
 /* ── Cyber: Structured threat intel endpoints ──────────── */
 
@@ -123,22 +129,6 @@ function stripUrls(text) {
     .replace(/\S*%[0-9a-f]{2}\S*/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-function formatCyberPostText(text) {
-  const cleaned = stripUrls(text)
-    .replace(/([!?])(?=[A-Z#])/g, '$1 ')
-    .replace(/(Victim:|Group:|Discovered:|Country:|Sector:|Leak site:|Location:)/g, '\n$1')
-    .replace(/Track latest.*$/i, '')
-    .replace(/Look up.*$/i, '')
-    .replace(/\n+/g, '\n')
-    .trim();
-
-  return cleaned
-    .split('\n')
-    .map(line => line.trim())
-    .filter(Boolean)
-    .join('\n');
 }
 
 function extractText(value) {
@@ -383,38 +373,7 @@ async function fetchReliefWeb(env) {
 
 /* ── Mastodon infosec.exchange — practitioner chatter ──── */
 
-const INFOSEC_KEYWORDS = /\b(CVE|vulnerability|exploit|malware|ransomware|breach|zero[- ]day|0day|phishing|APT|threat|IOC|C2|botnet|backdoor|RCE|patch|advisory|CISA|NCSC|incident|attack|compromise|trojan|infostealer|campaign)\b/i;
 
-async function fetchMastodonInfosec() {
-  try {
-    const res = await fetch(MASTODON_INFOSEC_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
-    if (!res.ok) return [];
-    const posts = await res.json();
-    if (!Array.isArray(posts)) return [];
-
-    return posts
-      .map(post => {
-        const text = formatCyberPostText((post.content || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim());
-        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-        const title = lines[0] || '';
-        const description = lines.slice(1).join('\n');
-        return {
-          source: post.account?.display_name || post.account?.username || 'infosec.exchange',
-          sourceType: 'cyber',
-          title,
-          link: post.url || post.uri || '#',
-          description,
-          pubDate: post.created_at ? new Date(post.created_at).toISOString() : new Date().toISOString(),
-          _fullText: text,
-        };
-      })
-      .filter(i => i.title && INFOSEC_KEYWORDS.test(i._fullText) && isRecent(i.pubDate))
-      .map(({ _fullText, ...item }) => item);
-  } catch (err) {
-    console.error('Mastodon infosec.exchange error:', err.message || err);
-    return [];
-  }
-}
 
 /* ── CISA KEV — actively exploited vulnerabilities ─────── */
 
@@ -580,7 +539,6 @@ export async function onRequestGet(context) {
     cyberRssItems,
     ncscItems,
     hibpItems,
-    mastodonItems,
     kevItems,
     threatFoxItems,
     feodoItems,
@@ -602,7 +560,6 @@ export async function onRequestGet(context) {
     Promise.all(CYBER_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, 'cyber'))).then(r => r.flat()),
     fetchRssFeed(NCSC_URL, 'NCSC UK', 'ncsc'),
     fetchRssFeed(HIBP_URL, 'HIBP', 'breach'),
-    fetchMastodonInfosec(),
     fetchCisaKev(),
     fetchThreatFox(abusechKey),
     fetchFeodoTracker(abusechKey),
@@ -662,7 +619,7 @@ export async function onRequestGet(context) {
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   const iocDeduped = deduplicate([...threatFoxItems, ...feodoItems])
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  const cyberNews = deduplicate([...cyberRssItems, ...mastodonItems])
+  const cyberNews = deduplicate(cyberRssItems)
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   const cyberSlots = 30;
   let remaining = cyberSlots;
