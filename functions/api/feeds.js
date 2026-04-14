@@ -613,28 +613,19 @@ export async function onRequestGet(context) {
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
     .slice(0, 24);
 
-  // Cyber: prioritize KEV/NCSC > Breaches > IOC/C2 > news articles
-  const kevDeduped = deduplicate([...kevItems, ...ncscItems]);
-  const breachDeduped = deduplicate(hibpItems)
+  // Cyber: show all deduplicated alerts that are still inside the retention window.
+  // Previously this lane used fixed category quotas, which caused valid sub-24h alerts
+  // to disappear whenever other categories filled the 30 available slots.
+  const cyber = deduplicate([
+    ...kevItems,
+    ...ncscItems,
+    ...hibpItems,
+    ...threatFoxItems,
+    ...feodoItems,
+    ...cyberRssItems,
+  ])
+    .filter(i => isRecent(i.pubDate))
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  const iocDeduped = deduplicate([...threatFoxItems, ...feodoItems])
-    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  const cyberNews = deduplicate(cyberRssItems)
-    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  const cyberSlots = 30;
-  let remaining = cyberSlots;
-  const cyber = [];
-  const kevSlice = kevDeduped.slice(0, 10);
-  cyber.push(...kevSlice);
-  remaining -= kevSlice.length;
-  const breachSlice = breachDeduped.slice(0, Math.min(8, remaining));
-  cyber.push(...breachSlice);
-  remaining -= breachSlice.length;
-  const iocSlice = iocDeduped.slice(0, Math.min(12, remaining));
-  cyber.push(...iocSlice);
-  remaining -= iocSlice.length;
-  cyber.push(...cyberNews.slice(0, remaining));
-  cyber.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
   // Cyber stats for OpenCTI-style summary
   const cyberStats = {
