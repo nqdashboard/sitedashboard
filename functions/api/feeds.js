@@ -96,6 +96,7 @@ const NON_GEOPOLITICAL = /\b(football|soccer|cricket|rugby|tennis|boxing|UFC|MMA
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const OSINT_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
+const TRANSLATE_API_BASE = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=';
 
 function isRecent(dateStr, maxAgeMs = MAX_AGE_MS) {
   if (!dateStr) return false;
@@ -162,6 +163,56 @@ function normalizeTitle(title) {
   return (title || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 }
 
+function needsEnglishTranslation(text) {
+  if (!text) return false;
+
+  const sample = text.trim();
+  if (!sample) return false;
+  if (/[áéíóúñü¿¡àèìòùç]/i.test(sample)) return true;
+
+  const lower = sample.toLowerCase();
+  const romanceMatches = (lower.match(/\b(el|la|los|las|de|del|para|por|con|sin|que|una|uno|canal|autoridad|actualizaci[oó]n|comunicado|tr[aá]nsito|buques?|puerto|cierre|cortes|frontera|seguridad)\b/g) || []).length;
+  const englishMatches = (lower.match(/\b(the|and|for|with|from|this|that|alert|update|report|security|conflict|earthquake)\b/g) || []).length;
+
+  return romanceMatches >= 3 && romanceMatches > englishMatches;
+}
+
+async function translateToEnglish(text) {
+  if (!text || !needsEnglishTranslation(text)) return text;
+
+  try {
+    const res = await fetch(`${TRANSLATE_API_BASE}${encodeURIComponent(text)}`, {
+      cf: { cacheTtl: 86400, cacheEverything: true },
+    });
+    if (!res.ok) return text;
+
+    const data = await res.json();
+    const translated = Array.isArray(data?.[0])
+      ? data[0].map(part => Array.isArray(part) ? part[0] : '').join('').trim()
+      : '';
+
+    return translated || text;
+  } catch (err) {
+    console.error('Translation error:', err.message || err);
+    return text;
+  }
+}
+
+async function translateItemsToEnglish(items) {
+  return Promise.all(items.map(async item => {
+    const [title, description] = await Promise.all([
+      translateToEnglish(item.title),
+      translateToEnglish(item.description),
+    ]);
+
+    return {
+      ...item,
+      title,
+      description,
+    };
+  }));
+}
+
 /* ── RSS Parsing ───────────────────────────────────────── */
 
 function parseRss(xml, feedName, sourceType, maxAgeMs = MAX_AGE_MS) {
@@ -205,7 +256,8 @@ async function fetchRssFeed(url, feedName, sourceType, cacheTtl = 900, maxAgeMs 
     const res = await fetch(url, { cf: { cacheTtl, cacheEverything: true } });
     if (!res.ok) return [];
     const xml = await res.text();
-    return parseRss(xml, feedName, sourceType, maxAgeMs);
+    const items = parseRss(xml, feedName, sourceType, maxAgeMs);
+    return await translateItemsToEnglish(items);
   } catch (err) {
     console.error(`${feedName} fetch error:`, err.message || err);
     return [];
