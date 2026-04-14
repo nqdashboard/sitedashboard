@@ -324,9 +324,13 @@ body {
   max-height: calc(1.35em * 3);
 }
 
-.feed-item--osint .feed-item__headline,
 .feed-item--osint .feed-item__source {
-  color: #a5b4fc;
+  color: #7dd3fc;
+  letter-spacing: 0.08em;
+}
+
+.feed-item--osint .feed-item__headline {
+  color: #eef2ff;
 }
 
 .feed-item--osint .feed-item__desc {

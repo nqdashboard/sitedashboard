@@ -187,7 +187,7 @@ function parseRss(xml, feedName, sourceType, maxAgeMs = MAX_AGE_MS) {
       const rawTitle = item.title || '';
       const link = item.link?.['@_href'] || item.link || '';
       const pubDate = item.pubDate || item.published || item.updated || item['dc:date'] || item['atom:updated'] || item['atom:published'] || null;
-      const title = sourceType === 'cyber' ? stripUrls(stripHtml(rawTitle)) : rawTitle;
+      const normalizedTitle = stripHtml(extractText(rawTitle));
       const description = sourceType === 'cyber'
         ? stripUrls(stripHtml(item.description || item.summary || item.content || ''))
         : stripHtml(item.description || item.summary || item.content || '');
@@ -196,7 +196,9 @@ function parseRss(xml, feedName, sourceType, maxAgeMs = MAX_AGE_MS) {
       return {
         source: feedName,
         sourceType,
-        title: typeof title === 'string' ? title.trim() : String(title).trim(),
+        title: sourceType === 'cyber'
+          ? stripUrls(stripHtml(rawTitle))
+          : normalizedTitle,
         link: typeof link === 'string' ? link.trim() : '',
         description,
         pubDate: validDate,
