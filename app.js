@@ -355,6 +355,23 @@ function clipSentence(text, maxChars) {
   return (lastSpace > 40 ? clipped.slice(0, lastSpace) : clipped).trim() + '...';
 }
 
+function findSentenceBoundary(text) {
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '!' || ch === '?') return i + 1;
+    if (ch !== '.') continue;
+
+    const prev = text[i - 1] || '';
+    const next = text[i + 1] || '';
+    if (/\d/.test(prev) && /\d/.test(next)) continue;
+
+    const rest = text.slice(i + 1);
+    if (/^\s*["')\]]*\s*$/.test(rest)) return i + 1;
+    if (/^\s*["')\]]*\s+[A-Z]/.test(rest)) return i + 1;
+  }
+  return -1;
+}
+
 function summarizeCyberDescription(desc, maxLines = CYBER_CARD_MAX_LINES, maxChars = CYBER_CARD_MAX_CHARS) {
   const clean = (desc || '').replace(/\r/g, '').trim();
   if (!clean) return '';
@@ -370,7 +387,8 @@ function summarizeCyberDescription(desc, maxLines = CYBER_CARD_MAX_LINES, maxCha
   }
 
   const compact = clean.replace(/\s+/g, ' ').trim();
-  const firstSentence = compact.match(/[^.!?]+[.!?]+["')\]]*/)?.[0]?.trim();
+  const boundary = findSentenceBoundary(compact);
+  const firstSentence = boundary > 0 ? compact.slice(0, boundary).trim() : '';
   return clipSentence(firstSentence || compact, maxChars);
 }
 

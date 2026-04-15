@@ -205,6 +205,18 @@ body {
   letter-spacing: 0.15em;
 }
 
+#aoi-uk .feed__heading--country {
+  border-left-color: #7dd3fc;
+}
+
+#aoi-zambia .feed__heading--country {
+  border-left-color: #34d399;
+}
+
+#aoi-panama .feed__heading--country {
+  border-left-color: #38bdf8;
+}
+
 /* ── Scroll containers — static, newest at top ─────────── */
 .feed__scroll {
   flex: 1;
