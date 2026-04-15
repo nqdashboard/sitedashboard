@@ -17,10 +17,10 @@ const AOI_RSS_FEEDS = [
   { name: 'BBC Politics', url: 'https://feeds.bbci.co.uk/news/politics/rss.xml', country: 'uk', sourceType: 'conflict', includePattern: /\b(sanction|sanctions|security|defence|defense|protest|protests|migration|border|asylum|emergency|police|terror|terrorism|iran|ukraine|russia|china|public order)\b/i },
   { name: 'Home Office', url: 'https://www.govwire.co.uk/rss/home-office', country: 'uk', sourceType: 'conflict', includePattern: /\b(security|terror|terrorism|extremism|protest|public order|police|arrest|crime|border|migration|asylum|sanction|illegal working|smuggling)\b/i },
   { name: 'NCA', url: 'https://www.govwire.co.uk/rss/national-crime-agency', country: 'uk', sourceType: 'conflict', includePattern: /\b(arrest|charged|crime|smuggling|trafficking|fraud|sanction|security|operation|police|counter[- ]terror|terror)\b/i },
-  { name: 'Zambia Monitor', url: 'https://www.zambiamonitor.com/feed/', country: 'zambia', sourceType: 'conflict', includePattern: /\b(protest|protests|demonstration|demonstrations|riot|riots|unrest|security|police|arrest|court|constitutional|constitution|amendment|opposition|corruption|strike|emergency|disturbance)\b/i },
+  { name: 'Zambia Monitor', url: 'https://www.zambiamonitor.com/feed/', country: 'zambia', sourceType: 'conflict', includePattern: /\b(protest|protests|demonstration|demonstrations|riot|riots|unrest|security|police|arrest|court|constitutional|constitution|amendment|opposition|corruption|strike|emergency|disturbance)\b/i, requireCountryMatch: true },
   { name: 'Panama Canal Authority', url: 'https://pancanal.com/en/news/feed/', country: 'panama', sourceType: 'conflict', includePattern: /\b(canal|transit|restriction|security|closure|delay|emergency|incident)\b/i },
-  { name: 'La Estrella Panamá', url: 'https://news.google.com/rss/search?q=site%3Alaestrella.com.pa%20(Panam%C3%A1%20OR%20Panama)%20(protesta%20OR%20protestas%20OR%20bloqueo%20OR%20bloqueos%20OR%20huelga%20OR%20violencia%20OR%20disturbios%20OR%20enfrentamientos%20OR%20seguridad%20OR%20crisis%20OR%20emergencia%20OR%20canal%20OR%20Dari%C3%A9n%20OR%20frontera%20OR%20migraci%C3%B3n%20OR%20Asamblea%20OR%20gobierno%20OR%20presidente%20OR%20ley%20OR%20CSS%20OR%20mina%20OR%20miner%C3%ADa%20OR%20Estados%20Unidos%20OR%20China)&hl=es-419&gl=PA&ceid=PA%3Aes-419', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|violencia|crisis|emergencia|estado de emergencia|canal|dari[eé]n|frontera|migraci[oó]n|migrantes|asamblea|gobierno|presidente|ley|css|mina|miner[ií]a|seguridad|detenid|captur|operativo|estados unidos|ee\.?\s?uu\.?|china)\b/i, excludePattern: /\b(clima|tiempo|pron[oó]stico|deporte|f[uú]tbol|beisbol|b[eé]isbol|m[uú]sica|concierto|cultura|farándula|espect[aá]culo|loter[ií]a|jubilados|pensionados|docente|escuela|universidad|feria|turismo|gastronom[ií]a|moda|tecnolog[ií]a|salud|famoso|famosa)\b/i, forceTranslate: true, sourceLang: 'es' },
-  { name: 'La Prensa Panamá', url: 'https://news.google.com/rss/search?q=site%3Aprensa.com%20(Panam%C3%A1%20OR%20Panama)%20(protesta%20OR%20protestas%20OR%20bloqueo%20OR%20bloqueos%20OR%20huelga%20OR%20violencia%20OR%20disturbios%20OR%20enfrentamientos%20OR%20seguridad%20OR%20crisis%20OR%20emergencia%20OR%20canal%20OR%20Dari%C3%A9n%20OR%20frontera%20OR%20migraci%C3%B3n%20OR%20Asamblea%20OR%20gobierno%20OR%20presidente%20OR%20ley%20OR%20CSS%20OR%20mina%20OR%20miner%C3%ADa%20OR%20Estados%20Unidos%20OR%20China)&hl=es-419&gl=PA&ceid=PA%3Aes-419', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|violencia|crisis|emergencia|estado de emergencia|canal|dari[eé]n|frontera|migraci[oó]n|migrantes|asamblea|gobierno|presidente|ley|css|mina|miner[ií]a|seguridad|detenid|captur|operativo|estados unidos|ee\.?\s?uu\.?|china)\b/i, excludePattern: /\b(clima|tiempo|pron[oó]stico|deporte|f[uú]tbol|beisbol|b[eé]isbol|m[uú]sica|concierto|cultura|farándula|espect[aá]culo|loter[ií]a|jubilados|pensionados|docente|escuela|universidad|feria|turismo|gastronom[ií]a|moda|tecnolog[ií]a|salud|famoso|famosa)\b/i, forceTranslate: true, sourceLang: 'es' },
+  { name: 'La Estrella Panamá', url: 'https://news.google.com/rss/search?q=site%3Alaestrella.com.pa%20(Panam%C3%A1%20OR%20Panama)%20(protesta%20OR%20protestas%20OR%20bloqueo%20OR%20bloqueos%20OR%20huelga%20OR%20violencia%20OR%20disturbios%20OR%20enfrentamientos%20OR%20seguridad%20OR%20crisis%20OR%20emergencia%20OR%20canal%20OR%20Dari%C3%A9n%20OR%20frontera%20OR%20migraci%C3%B3n%20OR%20Asamblea%20OR%20gobierno%20OR%20presidente%20OR%20ley%20OR%20CSS%20OR%20mina%20OR%20miner%C3%ADa%20OR%20Estados%20Unidos%20OR%20China)&hl=es-419&gl=PA&ceid=PA%3Aes-419', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|violencia|crisis|emergencia|estado de emergencia|canal|dari[eé]n|frontera|migraci[oó]n|migrantes|asamblea|gobierno|presidente|ley|css|mina|miner[ií]a|seguridad|detenid|captur|operativo|estados unidos|ee\.?\s?uu\.?|china)\b/i, excludePattern: /\b(clima|tiempo|pron[oó]stico|deporte|f[uú]tbol|beisbol|b[eé]isbol|m[uú]sica|concierto|cultura|farándula|espect[aá]culo|loter[ií]a|jubilados|pensionados|docente|escuela|universidad|feria|turismo|gastronom[ií]a|moda|tecnolog[ií]a|salud|famoso|famosa)\b/i, forceTranslate: true, sourceLang: 'es', requireCountryMatch: true },
+  { name: 'La Prensa Panamá', url: 'https://news.google.com/rss/search?q=site%3Aprensa.com%20(Panam%C3%A1%20OR%20Panama)%20(protesta%20OR%20protestas%20OR%20bloqueo%20OR%20bloqueos%20OR%20huelga%20OR%20violencia%20OR%20disturbios%20OR%20enfrentamientos%20OR%20seguridad%20OR%20crisis%20OR%20emergencia%20OR%20canal%20OR%20Dari%C3%A9n%20OR%20frontera%20OR%20migraci%C3%B3n%20OR%20Asamblea%20OR%20gobierno%20OR%20presidente%20OR%20ley%20OR%20CSS%20OR%20mina%20OR%20miner%C3%ADa%20OR%20Estados%20Unidos%20OR%20China)&hl=es-419&gl=PA&ceid=PA%3Aes-419', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|violencia|crisis|emergencia|estado de emergencia|canal|dari[eé]n|frontera|migraci[oó]n|migrantes|asamblea|gobierno|presidente|ley|css|mina|miner[ií]a|seguridad|detenid|captur|operativo|estados unidos|ee\.?\s?uu\.?|china)\b/i, excludePattern: /\b(clima|tiempo|pron[oó]stico|deporte|f[uú]tbol|beisbol|b[eé]isbol|m[uú]sica|concierto|cultura|farándula|espect[aá]culo|loter[ií]a|jubilados|pensionados|docente|escuela|universidad|feria|turismo|gastronom[ií]a|moda|tecnolog[ií]a|salud|famoso|famosa)\b/i, forceTranslate: true, sourceLang: 'es', requireCountryMatch: true },
   { name: 'FCDO Zambia', url: 'https://www.gov.uk/foreign-travel-advice/zambia.atom', country: 'zambia', sourceType: 'humanitarian' },
   { name: 'FCDO Panama', url: 'https://www.gov.uk/foreign-travel-advice/panama.atom', country: 'panama', sourceType: 'humanitarian' },
 ];
@@ -97,7 +97,7 @@ const COUNTRY_CODE_NAMES = {
 
 const AOI_UK = /\b(UK|Britain|British|United Kingdom|England|English|Scotland|Scottish|Wales|Welsh|London|Manchester|Birmingham|Liverpool|Belfast|Edinburgh|Westminster|Northern Ireland)\b/i;
 const AOI_ZAMBIA = /\b(Zambia|Zambian|Lusaka|Copperbelt|Livingstone|Kitwe|Ndola)\b/i;
-const AOI_PANAMA = /\b(Panama|Panamanian|Panama City|Panama Canal|Colon|Darien)\b/i;
+const AOI_PANAMA = /\b(Panama|Panamá|Panamanian|Panameño|Panama City|Panama Canal|Canal de Panama|Canal de Panamá|Colon|Colón|Darien|Darién)\b/i;
 
 /* ── Content Filters ───────────────────────────────────── */
 
@@ -300,7 +300,7 @@ async function translateToEnglishForced(text, sourceLang = 'auto') {
       ? data.sentences.map(part => part?.trans || '').join('').trim()
       : '';
 
-    if (translated && translated.toLowerCase() !== text.toLowerCase()) return translated;
+    if (translated && translated.toLowerCase() !== text.toLowerCase() && !needsEnglishTranslation(translated)) return translated;
     return sourceLang === 'es' ? translateSpanishFallback(text) : text;
   } catch (err) {
     console.error('Forced translation error:', err.message || err);
@@ -309,21 +309,28 @@ async function translateToEnglishForced(text, sourceLang = 'auto') {
 }
 
 function translateSpanishFallback(text) {
-  let translated = ` ${text} `;
+    let translated = ` ${text} `;
 
-  const phraseMap = [
-    [/aumento a jubilados y pensionados/gi, 'increase for retirees and pensioners'],
-    [/padres de familia/gi, 'parents'],
-    [/intento de robo/gi, 'attempted robbery'],
-    [/escuela/gi, 'school'],
-    [/denuncian inseguridad/gi, 'report insecurity'],
-    [/proyecto de ley/gi, 'bill'],
-    [/avanza positivamente/gi, 'is advancing'],
-    [/en la asamblea nacional/gi, 'in the National Assembly'],
-    [/genera alarma/gi, 'is causing alarm'],
-    [/exigen mayor seguridad/gi, 'are demanding greater security'],
-    [/docente/gi, 'teacher'],
-  ];
+    const phraseMap = [
+      [/motorizados de pedidosya reclaman m[aá]s ingresos/gi, 'PedidosYa riders demand higher pay'],
+      [/mitradel cuestiona protest/gi, 'Labour ministry questions protest'],
+      [/qu[ií]en es john barrett\??/gi, 'Who is John Barrett?'],
+      [/su papel en panam[aá], guatemala y su llegada como encargado de negocios de estados unidos en venezuela/gi, 'his role in Panama and Guatemala, and his arrival as the US chargé d’affaires in Venezuela'],
+      [/aumento a jubilados y pensionados/gi, 'increase for retirees and pensioners'],
+      [/padres de familia/gi, 'parents'],
+      [/intento de robo/gi, 'attempted robbery'],
+      [/escuela/gi, 'school'],
+      [/denuncian inseguridad/gi, 'report insecurity'],
+      [/proyecto de ley/gi, 'bill'],
+      [/avanza positivamente/gi, 'is advancing'],
+      [/en la asamblea nacional/gi, 'in the National Assembly'],
+      [/genera alarma/gi, 'is causing alarm'],
+      [/exigen mayor seguridad/gi, 'are demanding greater security'],
+      [/docente/gi, 'teacher'],
+      [/\s+-\s+la prensa panam[aá]\s*$/gi, ''],
+      [/\s+-\s+la estrella de panam[aá]\s*$/gi, ''],
+      [/\s+-\s+la estrella panam[aá]\s*$/gi, ''],
+    ];
 
   for (const [pattern, replacement] of phraseMap) {
     translated = translated.replace(pattern, replacement);
@@ -367,8 +374,22 @@ function translateSpanishFallback(text) {
     robo: 'robbery',
     escuela: 'school',
     docente: 'teacher',
-    pedregal: 'Pedregal',
-  };
+      pedregal: 'Pedregal',
+      reclaman: 'demand',
+      ingresos: 'pay',
+      cuestiona: 'questions',
+      papel: 'role',
+      llegada: 'arrival',
+      encargado: 'chargé',
+      negocios: 'affairs',
+      estados: 'States',
+      unidos: 'United',
+      venezuela: 'Venezuela',
+      guatemala: 'Guatemala',
+      quien: 'who',
+      más: 'more',
+      mas: 'more',
+    };
 
   translated = translated.replace(/\b[\p{L}ñÑáéíóúÁÉÍÓÚüÜ]+\b/gu, word => {
     const lower = word.toLowerCase();
@@ -379,14 +400,21 @@ function translateSpanishFallback(text) {
 }
 
 function filterAoiFeedItems(items, feed) {
-  return items.filter(item => {
-    const text = `${item.title || ''} ${item.description || ''}`;
-    if (NON_GEOPOLITICAL.test(text)) return false;
-    if (feed.includePattern && !feed.includePattern.test(text)) return false;
-    if (feed.excludePattern && feed.excludePattern.test(text)) return false;
-    return true;
-  });
-}
+    return items.filter(item => {
+      const text = `${item.title || ''} ${item.description || ''}`;
+      if (NON_GEOPOLITICAL.test(text)) return false;
+      if (feed.includePattern && !feed.includePattern.test(text)) return false;
+      if (feed.excludePattern && feed.excludePattern.test(text)) return false;
+      if (feed.requireCountryMatch) {
+        const matcher = feed.country === 'zambia' ? AOI_ZAMBIA
+          : feed.country === 'panama' ? AOI_PANAMA
+          : feed.country === 'uk' ? AOI_UK
+          : null;
+        if (matcher && !matcher.test(text)) return false;
+      }
+      return true;
+    });
+  }
 
 async function fetchAoiFeed(feed) {
   const items = await fetchRssFeed(feed.url, feed.name, feed.sourceType);

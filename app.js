@@ -376,7 +376,7 @@ function summarizeCyberDescription(desc, maxLines = CYBER_CARD_MAX_LINES, maxCha
 
 /* ── Rendering ────────────────────────────────────────── */
 
-function createItemHTML(item, defaultColorClass, highlight = false, isNew = false, dimByAge = true, suppressBadges = false) {
+function createItemHTML(item, defaultColorClass, highlight = false, isNew = false, dimByAge = true, suppressBadges = false, calmMeta = false) {
   const escapedTitle = escapeHtml(item.title || '');
   const highlightClass = highlight ? ' feed-item--highlight' : '';
   const newClass = isNew ? ' feed-item--new' : '';
@@ -384,7 +384,7 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
   const isOsint = item.sourceType === 'osint';
 
   const style = getSourceStyle(item);
-  const colorClass = style.colorClass || defaultColorClass;
+  const colorClass = calmMeta ? defaultColorClass : (style.colorClass || defaultColorClass);
   const badgeHTML = !isOsint && !suppressBadges && style.badge
     ? `<span class="feed-item__badge feed-item__badge--${item.sourceType}">${style.badge}</span>`
     : '';
@@ -438,6 +438,7 @@ function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
   const scrollEl = container.closest('.feed__scroll');
   const previousKeys = renderedFeedItems.get(containerId);
   const isAoiFeed = containerId.startsWith('items-aoi-');
+  const isGeoFeed = isAoiFeed || containerId === 'items-global';
   const dimByAge = !isAoiFeed || items.length > 4;
 
   if (!items.length) {
@@ -451,7 +452,7 @@ function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
   container.innerHTML = items.map(item => {
     const highlight = highlightRegex ? highlightRegex.test(item.title + ' ' + (item.description || '')) : false;
     const isNew = Boolean(previousKeys && !previousKeys.has(itemKey(item)));
-    return createItemHTML(item, defaultColorClass, highlight, isNew, dimByAge, isAoiFeed);
+    return createItemHTML(item, defaultColorClass, highlight, isNew, dimByAge, isGeoFeed, isGeoFeed);
   }).join('');
   renderedFeedItems.set(containerId, nextKeys);
 
@@ -667,9 +668,9 @@ async function refreshDashboard() {
     const data = await res.json();
 
     const aoi = data.aoi || {};
-    renderFeed('items-aoi-uk', aoi.uk || [], 'feed-item__source--amber');
-    renderFeed('items-aoi-zambia', aoi.zambia || [], 'feed-item__source--amber');
-    renderFeed('items-aoi-panama', aoi.panama || [], 'feed-item__source--amber');
+    renderFeed('items-aoi-uk', aoi.uk || [], 'feed-item__source--blue');
+    renderFeed('items-aoi-zambia', aoi.zambia || [], 'feed-item__source--blue');
+    renderFeed('items-aoi-panama', aoi.panama || [], 'feed-item__source--blue');
     renderFeed('items-global', data.global || [], 'feed-item__source--blue');
     renderOsintFeed('items-osint', data.osint || []);
     renderCyberFeed('items-cyber', data.cyber || []);
