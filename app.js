@@ -51,7 +51,7 @@ const COUNTRY_ALIAS_MAP = {
   KH: ['Cambodia', 'Cambodian', 'Phnom Penh'],
   CM: ['Cameroon', 'Cameroonian', 'Yaounde', 'Yaoundé'],
   CA: ['Canada', 'Canadian', 'Ottawa', 'Toronto'],
-  CF: ['Central African Republic', 'CAR', 'Bangui'],
+  CF: ['Central African Republic', 'Bangui'],
   TD: ['Chad', 'Chadian', "N'Djamena"],
   CL: ['Chile', 'Chilean', 'Santiago'],
   CN: ['China', 'Chinese', 'Beijing', 'Xi Jinping'],
