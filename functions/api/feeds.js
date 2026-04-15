@@ -32,7 +32,14 @@ const RELIEFWEB_BASE = 'https://api.reliefweb.int/v2/reports';
 /* ── AOI: Country-specific RSS feeds ──────────────────── */
 
 const AOI_RSS_FEEDS = [
-  { name: 'Panama Canal Authority', url: 'https://pancanal.com/en/news/feed/', country: 'panama', sourceType: 'conflict' },
+  { name: 'BBC UK', url: 'https://feeds.bbci.co.uk/news/uk/rss.xml', country: 'uk', sourceType: 'conflict', includePattern: /\b(protest|protests|demonstration|demonstrations|riot|riots|disorder|disturbance|security|terror|terrorism|counterterror|counter-terror|knife|stabbing|shooting|fatal|emergency|police|sanction|sanctions|migration|border|asylum|public order)\b/i },
+  { name: 'BBC Politics', url: 'https://feeds.bbci.co.uk/news/politics/rss.xml', country: 'uk', sourceType: 'conflict', includePattern: /\b(sanction|sanctions|security|defence|defense|protest|protests|migration|border|asylum|emergency|police|terror|terrorism|iran|ukraine|russia|china|public order)\b/i },
+  { name: 'Home Office', url: 'https://www.govwire.co.uk/rss/home-office', country: 'uk', sourceType: 'conflict', includePattern: /\b(security|terror|terrorism|extremism|protest|public order|police|arrest|crime|border|migration|asylum|sanction|illegal working|smuggling)\b/i },
+  { name: 'NCA', url: 'https://www.govwire.co.uk/rss/national-crime-agency', country: 'uk', sourceType: 'conflict', includePattern: /\b(arrest|charged|crime|smuggling|trafficking|fraud|sanction|security|operation|police|counter[- ]terror|terror)\b/i },
+  { name: 'Zambia Monitor', url: 'https://www.zambiamonitor.com/feed/', country: 'zambia', sourceType: 'conflict', includePattern: /\b(protest|protests|demonstration|demonstrations|riot|riots|unrest|security|police|arrest|court|constitutional|constitution|amendment|opposition|corruption|strike|emergency|disturbance)\b/i },
+  { name: 'Panama Canal Authority', url: 'https://pancanal.com/en/news/feed/', country: 'panama', sourceType: 'conflict', includePattern: /\b(canal|transit|restriction|security|closure|delay|emergency|incident)\b/i },
+  { name: 'Telemetro Últimas', url: 'https://www.telemetro.com/rss/pages/ultimas-noticias.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true },
+  { name: 'Telemetro Nacionales', url: 'https://www.telemetro.com/rss/pages/nacionales.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true },
   { name: 'FCDO Zambia', url: 'https://www.gov.uk/foreign-travel-advice/zambia.atom', country: 'zambia', sourceType: 'humanitarian' },
   { name: 'FCDO Panama', url: 'https://www.gov.uk/foreign-travel-advice/panama.atom', country: 'panama', sourceType: 'humanitarian' },
 ];
@@ -280,11 +287,11 @@ async function translateToEnglish(text) {
   }
 }
 
-async function translateItemsToEnglish(items) {
+async function translateItemsToEnglish(items, force = false) {
   return Promise.all(items.map(async item => {
     const [title, description] = await Promise.all([
-      translateToEnglish(item.title),
-      translateToEnglish(item.description),
+      force ? translateToEnglishForced(item.title) : translateToEnglish(item.title),
+      force ? translateToEnglishForced(item.description) : translateToEnglish(item.description),
     ]);
 
     return {
@@ -293,6 +300,44 @@ async function translateItemsToEnglish(items) {
       description,
     };
   }));
+}
+
+async function translateToEnglishForced(text) {
+  if (!text) return text;
+
+  try {
+    const res = await fetch(`${TRANSLATE_API_BASE}${encodeURIComponent(text)}`, {
+      cf: { cacheTtl: 86400, cacheEverything: true },
+    });
+    if (!res.ok) return text;
+
+    const data = await res.json();
+    const translated = Array.isArray(data?.[0])
+      ? data[0].map(part => Array.isArray(part) ? part[0] : '').join('').trim()
+      : '';
+
+    return translated || text;
+  } catch (err) {
+    console.error('Forced translation error:', err.message || err);
+    return text;
+  }
+}
+
+function filterAoiFeedItems(items, feed) {
+  return items.filter(item => {
+    const text = `${item.title || ''} ${item.description || ''}`;
+    if (NON_GEOPOLITICAL.test(text)) return false;
+    if (feed.includePattern && !feed.includePattern.test(text)) return false;
+    if (feed.excludePattern && feed.excludePattern.test(text)) return false;
+    return true;
+  });
+}
+
+async function fetchAoiFeed(feed) {
+  const items = await fetchRssFeed(feed.url, feed.name, feed.sourceType);
+  const translated = feed.forceTranslate ? await translateItemsToEnglish(items, true) : items;
+  const filtered = filterAoiFeedItems(translated, feed);
+  return filtered.map(item => ({ ...item, _country: feed.country }));
 }
 
 /* ── RSS Parsing ───────────────────────────────────────── */
@@ -747,7 +792,7 @@ export async function onRequestGet(context) {
     fetchUSGS(),
     fetchAcled(env),
     fetchReliefWeb(env),
-    Promise.all(AOI_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, f.sourceType).then(items => items.map(i => ({ ...i, _country: f.country }))))).then(r => r.flat()),
+    Promise.all(AOI_RSS_FEEDS.map(fetchAoiFeed)).then(r => r.flat()),
     fetchRssFeed(UN_PEACE_URL, 'UN News', 'conflict', 900),
     fetchRssFeed(UN_AFRICA_URL, 'UN Africa', 'conflict', 900),
     fetchRssFeed(ICRC_URL, 'ICRC', 'conflict', 1800),
