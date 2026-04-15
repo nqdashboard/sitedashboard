@@ -528,6 +528,33 @@ body {
   border-left: 2px solid #818cf8;
 }
 
+/* Geopolitical/AOI lanes use a calmer, unified accent system */
+.aoi-section .feed-item--conflict,
+.aoi-section .feed-item--analysis,
+.aoi-section .feed-item--disaster,
+.aoi-section .feed-item--seismic,
+.aoi-section .feed-item--acled,
+.aoi-section .feed-item--humanitarian,
+.aoi-section .feed-item--highlight,
+.aoi-section .feed-item--fatal,
+.feed--global .feed-item--conflict,
+.feed--global .feed-item--analysis,
+.feed--global .feed-item--disaster,
+.feed--global .feed-item--seismic,
+.feed--global .feed-item--acled,
+.feed--global .feed-item--humanitarian,
+.feed--global .feed-item--highlight,
+.feed--global .feed-item--fatal {
+  border-left: 2px solid #60a5fa;
+}
+
+.aoi-section .feed-item--highlight,
+.aoi-section .feed-item--fatal,
+.feed--global .feed-item--highlight,
+.feed--global .feed-item--fatal {
+  background: rgba(96, 165, 250, 0.08);
+}
+
 /* ── InfoCon Indicator ───────────────────────────────── */
 .infocon {
   display: inline-flex;
