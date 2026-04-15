@@ -19,8 +19,6 @@ const AOI_RSS_FEEDS = [
   { name: 'NCA', url: 'https://www.govwire.co.uk/rss/national-crime-agency', country: 'uk', sourceType: 'conflict', includePattern: /\b(arrest|charged|crime|smuggling|trafficking|fraud|sanction|security|operation|police|counter[- ]terror|terror)\b/i },
   { name: 'Zambia Monitor', url: 'https://www.zambiamonitor.com/feed/', country: 'zambia', sourceType: 'conflict', includePattern: /\b(protest|protests|demonstration|demonstrations|riot|riots|unrest|security|police|arrest|court|constitutional|constitution|amendment|opposition|corruption|strike|emergency|disturbance)\b/i },
   { name: 'Panama Canal Authority', url: 'https://pancanal.com/en/news/feed/', country: 'panama', sourceType: 'conflict', includePattern: /\b(canal|transit|restriction|security|closure|delay|emergency|incident)\b/i },
-  { name: 'Telemetro Últimas', url: 'https://www.telemetro.com/rss/pages/ultimas-noticias.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true, sourceLang: 'es' },
-  { name: 'Telemetro Nacionales', url: 'https://www.telemetro.com/rss/pages/nacionales.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true, sourceLang: 'es' },
   { name: 'FCDO Zambia', url: 'https://www.gov.uk/foreign-travel-advice/zambia.atom', country: 'zambia', sourceType: 'humanitarian' },
   { name: 'FCDO Panama', url: 'https://www.gov.uk/foreign-travel-advice/panama.atom', country: 'panama', sourceType: 'humanitarian' },
 ];
@@ -114,7 +112,9 @@ function isRecent(dateStr, maxAgeMs = MAX_AGE_MS) {
   if (!dateStr) return false;
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return false;
-  return (Date.now() - d.getTime()) < maxAgeMs;
+  const ageMs = Date.now() - d.getTime();
+  if (ageMs < -(5 * 60 * 1000)) return false;
+  return ageMs < maxAgeMs;
 }
 
 function stripHtml(html) {
