@@ -97,7 +97,7 @@ const SOURCE_STYLES = {
   kev:           { colorClass: 'feed-item__source--red',           badge: 'KEV' },
   ioc:           { colorClass: 'feed-item__source--conflict',      badge: 'IOC' },
   c2:            { colorClass: 'feed-item__source--red',           badge: 'C2' },
-  ncsc:          { colorClass: 'feed-item__source--blue',          badge: 'NCSC' },
+  ncsc:          { colorClass: 'feed-item__source--blue',          badge: null },
   breach:        { colorClass: 'feed-item__source--analysis',      badge: 'BREACH' },
   ransom:        { colorClass: 'feed-item__source--red',           badge: null },
   osint:         { colorClass: 'feed-item__source--osint',         badge: 'OSINT' },
@@ -213,7 +213,7 @@ function summarizeCyberDescription(desc, maxLines = CYBER_CARD_MAX_LINES, maxCha
 
 /* ── Rendering ────────────────────────────────────────── */
 
-function createItemHTML(item, defaultColorClass, highlight = false, isNew = false, dimByAge = true) {
+function createItemHTML(item, defaultColorClass, highlight = false, isNew = false, dimByAge = true, suppressBadges = false) {
   const escapedTitle = escapeHtml(item.title || '');
   const highlightClass = highlight ? ' feed-item--highlight' : '';
   const newClass = isNew ? ' feed-item--new' : '';
@@ -222,7 +222,7 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
 
   const style = getSourceStyle(item);
   const colorClass = style.colorClass || defaultColorClass;
-  const badgeHTML = !isOsint && style.badge
+  const badgeHTML = !isOsint && !suppressBadges && style.badge
     ? `<span class="feed-item__badge feed-item__badge--${item.sourceType}">${style.badge}</span>`
     : '';
 
@@ -288,7 +288,7 @@ function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
   container.innerHTML = items.map(item => {
     const highlight = highlightRegex ? highlightRegex.test(item.title + ' ' + (item.description || '')) : false;
     const isNew = Boolean(previousKeys && !previousKeys.has(itemKey(item)));
-    return createItemHTML(item, defaultColorClass, highlight, isNew, dimByAge);
+    return createItemHTML(item, defaultColorClass, highlight, isNew, dimByAge, isAoiFeed);
   }).join('');
   renderedFeedItems.set(containerId, nextKeys);
 
@@ -513,24 +513,12 @@ async function refreshDashboard() {
 
     updateInfocon(data.threatLevel);
     updateCyberStats(data.cyberStats);
-    updateGdeltStatus(data.gdeltRateLimited);
     updateStatus(true, data.cachedAt);
     consecutiveFailures = 0;
   } catch {
     updateStatus(false);
     consecutiveFailures++;
   }
-}
-
-function updateGdeltStatus(rateLimited) {
-  document.querySelectorAll('.gdelt-warning').forEach(el => el.remove());
-  if (!rateLimited) return;
-  document.querySelectorAll('#feed-aoi .feed__heading--country, #feed-global .feed__heading--blue').forEach(heading => {
-    const pill = document.createElement('span');
-    pill.className = 'gdelt-warning';
-    pill.textContent = 'GDELT unavailable';
-    heading.appendChild(pill);
-  });
 }
 
 /* ── Init & Timers ────────────────────────────────────── */

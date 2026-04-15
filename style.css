@@ -198,9 +198,9 @@ body {
 .feed__heading--osint   { color: #93c5fd; }
 .feed__heading--red     { color: var(--red); }
 .feed__heading--country {
-  color: var(--text);
-  background: rgba(245, 158, 11, 0.08);
-  border-left: 3px solid var(--amber);
+  color: #dbeafe;
+  background: linear-gradient(90deg, rgba(30, 64, 175, 0.24), rgba(15, 23, 42, 0.92));
+  border-left: 3px solid #60a5fa;
   font-size: 0.65rem;
   letter-spacing: 0.15em;
 }
@@ -555,19 +555,6 @@ body {
 .infocon__label {
   color: var(--text-muted);
   font-weight: 600;
-}
-
-.gdelt-warning {
-  display: inline-block;
-  font-size: 0.5rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 2px 6px;
-  margin-left: 8px;
-  border-radius: 2px;
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--amber);
-  vertical-align: middle;
 }
 
 .cyber-stats {

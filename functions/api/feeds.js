@@ -1,24 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
 
-/* ── GDELT — event detection queries ───────────────────── */
-
-const GDELT_BASE = 'https://api.gdeltproject.org/api/v2/doc/doc';
-const GDELT_OPTS = '&mode=artlist&format=json&sourcelang=english';
-
-const GDELT_EVENTS = '(attack OR explosion OR protest OR troops OR military OR police OR terror OR flood OR fire OR shooting OR crisis OR disaster OR earthquake OR conflict OR emergency OR killed OR bombing OR clashes OR riot OR collapse)';
-
-const GDELT_GLOBAL_QUERY = '(airstrike OR ceasefire OR shelling OR troops OR invasion OR coup OR uprising OR clashes OR missile OR drone strike OR military operation OR sanctions OR blockade)';
-const GDELT_GLOBAL_URL = `${GDELT_BASE}?query=${encodeURIComponent(GDELT_GLOBAL_QUERY)}${GDELT_OPTS}&maxrecords=25`;
-
-const GDELT_UK_QUERY = '(Britain OR "United Kingdom" OR London OR England OR Scotland OR Wales OR Belfast OR Manchester OR Birmingham) ' + GDELT_EVENTS;
-const GDELT_UK_URL = `${GDELT_BASE}?query=${encodeURIComponent(GDELT_UK_QUERY)}${GDELT_OPTS}&maxrecords=15`;
-
-const GDELT_ZAMBIA_QUERY = '(Zambia OR Lusaka OR Copperbelt OR Livingstone OR Kitwe OR Ndola) ' + GDELT_EVENTS;
-const GDELT_ZAMBIA_URL = `${GDELT_BASE}?query=${encodeURIComponent(GDELT_ZAMBIA_QUERY)}${GDELT_OPTS}&maxrecords=15`;
-
-const GDELT_PANAMA_QUERY = '(Panama OR "Panama Canal" OR "Panama City" OR Colon OR Darien) ' + GDELT_EVENTS;
-const GDELT_PANAMA_URL = `${GDELT_BASE}?query=${encodeURIComponent(GDELT_PANAMA_QUERY)}${GDELT_OPTS}&maxrecords=15`;
-
 /* ── Disaster & Seismic ────────────────────────────────── */
 
 const GDACS_URL = 'https://www.gdacs.org/xml/rss.xml';
@@ -38,8 +19,8 @@ const AOI_RSS_FEEDS = [
   { name: 'NCA', url: 'https://www.govwire.co.uk/rss/national-crime-agency', country: 'uk', sourceType: 'conflict', includePattern: /\b(arrest|charged|crime|smuggling|trafficking|fraud|sanction|security|operation|police|counter[- ]terror|terror)\b/i },
   { name: 'Zambia Monitor', url: 'https://www.zambiamonitor.com/feed/', country: 'zambia', sourceType: 'conflict', includePattern: /\b(protest|protests|demonstration|demonstrations|riot|riots|unrest|security|police|arrest|court|constitutional|constitution|amendment|opposition|corruption|strike|emergency|disturbance)\b/i },
   { name: 'Panama Canal Authority', url: 'https://pancanal.com/en/news/feed/', country: 'panama', sourceType: 'conflict', includePattern: /\b(canal|transit|restriction|security|closure|delay|emergency|incident)\b/i },
-  { name: 'Telemetro Últimas', url: 'https://www.telemetro.com/rss/pages/ultimas-noticias.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true },
-  { name: 'Telemetro Nacionales', url: 'https://www.telemetro.com/rss/pages/nacionales.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true },
+  { name: 'Telemetro Últimas', url: 'https://www.telemetro.com/rss/pages/ultimas-noticias.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true, sourceLang: 'es' },
+  { name: 'Telemetro Nacionales', url: 'https://www.telemetro.com/rss/pages/nacionales.xml', country: 'panama', sourceType: 'conflict', includePattern: /\b(protesta|protestas|manifestaci[oó]n|manifestaciones|bloqueo|bloqueos|huelga|disturbios|enfrentamientos|polic[ií]a|seguridad|detenid|captur|operativo|cierre|cerrada|canal|migraci[oó]n|frontera|dari[eé]n|asamblea|mina|miner[ií]a|emergencia)\b/i, forceTranslate: true, sourceLang: 'es' },
   { name: 'FCDO Zambia', url: 'https://www.gov.uk/foreign-travel-advice/zambia.atom', country: 'zambia', sourceType: 'humanitarian' },
   { name: 'FCDO Panama', url: 'https://www.gov.uk/foreign-travel-advice/panama.atom', country: 'panama', sourceType: 'humanitarian' },
 ];
@@ -287,11 +268,11 @@ async function translateToEnglish(text) {
   }
 }
 
-async function translateItemsToEnglish(items, force = false) {
+async function translateItemsToEnglish(items, force = false, sourceLang = 'auto') {
   return Promise.all(items.map(async item => {
     const [title, description] = await Promise.all([
-      force ? translateToEnglishForced(item.title) : translateToEnglish(item.title),
-      force ? translateToEnglishForced(item.description) : translateToEnglish(item.description),
+      force ? translateToEnglishForced(item.title, sourceLang) : translateToEnglish(item.title),
+      force ? translateToEnglishForced(item.description, sourceLang) : translateToEnglish(item.description),
     ]);
 
     return {
@@ -302,25 +283,97 @@ async function translateItemsToEnglish(items, force = false) {
   }));
 }
 
-async function translateToEnglishForced(text) {
+async function translateToEnglishForced(text, sourceLang = 'auto') {
   if (!text) return text;
 
   try {
-    const res = await fetch(`${TRANSLATE_API_BASE}${encodeURIComponent(text)}`, {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=en&dt=t&dj=1&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url, {
       cf: { cacheTtl: 86400, cacheEverything: true },
     });
     if (!res.ok) return text;
 
     const data = await res.json();
-    const translated = Array.isArray(data?.[0])
-      ? data[0].map(part => Array.isArray(part) ? part[0] : '').join('').trim()
+    const translated = Array.isArray(data?.sentences)
+      ? data.sentences.map(part => part?.trans || '').join('').trim()
       : '';
 
-    return translated || text;
+    if (translated && translated.toLowerCase() !== text.toLowerCase()) return translated;
+    return sourceLang === 'es' ? translateSpanishFallback(text) : text;
   } catch (err) {
     console.error('Forced translation error:', err.message || err);
-    return text;
+    return sourceLang === 'es' ? translateSpanishFallback(text) : text;
   }
+}
+
+function translateSpanishFallback(text) {
+  let translated = ` ${text} `;
+
+  const phraseMap = [
+    [/aumento a jubilados y pensionados/gi, 'increase for retirees and pensioners'],
+    [/padres de familia/gi, 'parents'],
+    [/intento de robo/gi, 'attempted robbery'],
+    [/escuela/gi, 'school'],
+    [/denuncian inseguridad/gi, 'report insecurity'],
+    [/proyecto de ley/gi, 'bill'],
+    [/avanza positivamente/gi, 'is advancing'],
+    [/en la asamblea nacional/gi, 'in the National Assembly'],
+    [/genera alarma/gi, 'is causing alarm'],
+    [/exigen mayor seguridad/gi, 'are demanding greater security'],
+    [/docente/gi, 'teacher'],
+  ];
+
+  for (const [pattern, replacement] of phraseMap) {
+    translated = translated.replace(pattern, replacement);
+  }
+
+  const wordMap = {
+    protesta: 'protest',
+    protestas: 'protests',
+    manifestacion: 'demonstration',
+    manifestación: 'demonstration',
+    manifestaciones: 'demonstrations',
+    bloqueo: 'blockade',
+    bloqueos: 'blockades',
+    huelga: 'strike',
+    disturbios: 'disturbances',
+    enfrentamientos: 'clashes',
+    policia: 'police',
+    policía: 'police',
+    seguridad: 'security',
+    detenidos: 'detainees',
+    detenido: 'detained',
+    capturan: 'capture',
+    operativo: 'operation',
+    cierre: 'closure',
+    cerrada: 'closed',
+    migracion: 'migration',
+    migración: 'migration',
+    frontera: 'border',
+    emergencia: 'emergency',
+    asamblea: 'assembly',
+    nacional: 'national',
+    panama: 'Panama',
+    panamá: 'Panama',
+    jubilados: 'retirees',
+    pensionados: 'pensioners',
+    padres: 'parents',
+    familia: 'family',
+    denuncian: 'report',
+    inseguridad: 'insecurity',
+    intento: 'attempt',
+    robo: 'robbery',
+    escuela: 'school',
+    docente: 'teacher',
+    pedregal: 'Pedregal',
+  };
+
+  translated = translated.replace(/\b[\p{L}ñÑáéíóúÁÉÍÓÚüÜ]+\b/gu, word => {
+    const lower = word.toLowerCase();
+    return wordMap[lower] || word;
+  });
+
+  return translated.replace(/\s+/g, ' ').trim();
 }
 
 function filterAoiFeedItems(items, feed) {
@@ -335,9 +388,11 @@ function filterAoiFeedItems(items, feed) {
 
 async function fetchAoiFeed(feed) {
   const items = await fetchRssFeed(feed.url, feed.name, feed.sourceType);
-  const translated = feed.forceTranslate ? await translateItemsToEnglish(items, true) : items;
-  const filtered = filterAoiFeedItems(translated, feed);
-  return filtered.map(item => ({ ...item, _country: feed.country }));
+  const filtered = filterAoiFeedItems(items, feed);
+  const translated = feed.forceTranslate
+    ? await translateItemsToEnglish(filtered, true, feed.sourceLang || 'auto')
+    : filtered;
+  return translated.map(item => ({ ...item, _country: feed.country }));
 }
 
 /* ── RSS Parsing ───────────────────────────────────────── */
@@ -387,43 +442,6 @@ async function fetchRssFeed(url, feedName, sourceType, cacheTtl = 900, maxAgeMs 
     return await translateItemsToEnglish(items);
   } catch (err) {
     console.error(`${feedName} fetch error:`, err.message || err);
-    return [];
-  }
-}
-
-/* ── GDELT DOC API ─────────────────────────────────────── */
-
-function parseGdeltDate(s) {
-  if (!s || s.length < 14) return null;
-  const iso = s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8)
-    + 'T' + s.slice(8, 10) + ':' + s.slice(10, 12) + ':' + s.slice(12, 14) + 'Z';
-  return iso;
-}
-
-function parseGdeltResponse(data, sourceType = 'conflict') {
-  if (!data?.articles) return [];
-  return data.articles
-    .map(art => ({
-      source: art.domain ? art.domain.replace(/^www\./, '') : 'GDELT',
-      sourceType,
-      title: (art.title || '').trim(),
-      link: art.url || '#',
-      description: '',
-      pubDate: parseGdeltDate(art.seendate) || new Date().toISOString(),
-    }))
-    .filter(i => i.title && isRecent(i.pubDate) && !NON_GEOPOLITICAL.test(i.title));
-}
-
-async function fetchGdelt(url) {
-  try {
-    const res = await fetch(url, { cf: { cacheTtl: 900, cacheEverything: true } });
-    if (!res.ok) return [];
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('json')) return [];
-    const data = await res.json();
-    return parseGdeltResponse(data);
-  } catch (err) {
-    console.error('GDELT fetch error:', err.message || err);
     return [];
   }
 }
@@ -762,10 +780,6 @@ export async function onRequestGet(context) {
 
   // Fetch all sources in parallel
   const [
-    gdeltGlobal,
-    gdeltUk,
-    gdeltZambia,
-    gdeltPanama,
     gdacsItems,
     usgsItems,
     acledItems,
@@ -784,10 +798,6 @@ export async function onRequestGet(context) {
     ransomwareLiveItems,
     threatLevel,
   ] = await Promise.all([
-    fetchGdelt(GDELT_GLOBAL_URL),
-    fetchGdelt(GDELT_UK_URL),
-    fetchGdelt(GDELT_ZAMBIA_URL),
-    fetchGdelt(GDELT_PANAMA_URL),
     fetchGdacs(),
     fetchUSGS(),
     fetchAcled(env),
@@ -807,10 +817,6 @@ export async function onRequestGet(context) {
     fetchSansInfocon(),
   ]);
 
-  // Detect GDELT rate limiting (all 4 queries returning 0 simultaneously)
-  const gdeltRateLimited = gdeltGlobal.length === 0 && gdeltUk.length === 0
-    && gdeltZambia.length === 0 && gdeltPanama.length === 0;
-
   // Route ACLED and ReliefWeb items to AOI countries where they match
   const acledUk = acledItems.filter(i => matchesCountry(i, AOI_UK));
   const acledZambia = acledItems.filter(i => matchesCountry(i, AOI_ZAMBIA));
@@ -828,19 +834,18 @@ export async function onRequestGet(context) {
   // UN Africa — only Zambia-relevant items
   const unAfricaZambia = unAfricaItems.filter(i => matchesCountry(i, AOI_ZAMBIA));
 
-  // AOI: country-specific GDELT + ACLED + ReliefWeb + RSS feeds
-  const aoiUk = deduplicate([...gdeltUk, ...acledUk, ...rwUk, ...aoiRssUk])
+  // AOI: country-specific ACLED + ReliefWeb + RSS feeds
+  const aoiUk = deduplicate([...acledUk, ...rwUk, ...aoiRssUk])
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 15);
 
-  const aoiZambia = deduplicate([...gdeltZambia, ...acledZambia, ...rwZambia, ...aoiRssZambia, ...unAfricaZambia])
+  const aoiZambia = deduplicate([...acledZambia, ...rwZambia, ...aoiRssZambia, ...unAfricaZambia])
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 15);
 
-  const aoiPanama = deduplicate([...gdeltPanama, ...acledPanama, ...rwPanama, ...aoiRssPanama])
+  const aoiPanama = deduplicate([...acledPanama, ...rwPanama, ...aoiRssPanama])
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 15);
 
   // Global: structured event data + UN/ICRC conflict alerts
   const global = deduplicate([
-    ...gdeltGlobal.slice(0, 12),
     ...gdacsItems.slice(0, 5),
     ...usgsItems.slice(0, 8),
     ...acledItems.slice(0, 10),
@@ -885,7 +890,6 @@ export async function onRequestGet(context) {
     cyber,
     cyberStats,
     threatLevel,
-    gdeltRateLimited,
     cachedAt: new Date().toISOString(),
   });
 
