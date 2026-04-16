@@ -417,12 +417,27 @@ function filterAoiFeedItems(items, feed) {
   }
 
 async function fetchAoiFeed(feed) {
-  const items = await fetchRssFeed(feed.url, feed.name, feed.sourceType);
-  const filtered = filterAoiFeedItems(items, feed);
-  const translated = feed.forceTranslate
-    ? await translateItemsToEnglish(filtered, true, feed.sourceLang || 'auto')
-    : filtered;
-  return translated.map(item => ({ ...item, _country: feed.country }));
+  try {
+    const items = await fetchRssFeed(feed.url, feed.name, feed.sourceType);
+    const filtered = filterAoiFeedItems(items, feed);
+    const translated = feed.forceTranslate
+      ? await translateItemsToEnglish(filtered, true, feed.sourceLang || 'auto')
+      : filtered;
+    return translated.map(item => ({ ...item, _country: feed.country }));
+  } catch (err) {
+    console.error(`${feed.name} AOI feed error:`, err.message || err);
+    return [];
+  }
+}
+
+async function settleArray(promise) {
+  try {
+    const result = await promise;
+    return Array.isArray(result) ? result : [];
+  } catch (err) {
+    console.error('Feed group error:', err.message || err);
+    return [];
+  }
 }
 
 /* ── RSS Parsing ───────────────────────────────────────── */
@@ -828,23 +843,26 @@ export async function onRequestGet(context) {
     ransomwareLiveItems,
     threatLevel,
   ] = await Promise.all([
-    fetchGdacs(),
-    fetchUSGS(),
-    fetchAcled(env),
-    fetchReliefWeb(env),
-    Promise.all(AOI_RSS_FEEDS.map(fetchAoiFeed)).then(r => r.flat()),
-    fetchRssFeed(UN_PEACE_URL, 'UN News', 'conflict', 900),
-    fetchRssFeed(UN_AFRICA_URL, 'UN Africa', 'conflict', 900),
-    fetchRssFeed(ICRC_URL, 'ICRC', 'conflict', 1800),
-    Promise.all(OSINT_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, f.sourceType, 1800, OSINT_MAX_AGE_MS))).then(r => r.flat()),
-    Promise.all(CYBER_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, 'cyber'))).then(r => r.flat()),
-    fetchRssFeed(NCSC_URL, 'NCSC UK', 'ncsc'),
-    fetchRssFeed(HIBP_URL, 'HIBP', 'breach'),
-    fetchCisaKev(),
-    fetchThreatFox(abusechKey),
-    fetchFeodoTracker(abusechKey),
-    fetchRansomwareLive(),
-    fetchSansInfocon(),
+    settleArray(fetchGdacs()),
+    settleArray(fetchUSGS()),
+    settleArray(fetchAcled(env)),
+    settleArray(fetchReliefWeb(env)),
+    settleArray(Promise.all(AOI_RSS_FEEDS.map(fetchAoiFeed)).then(r => r.flat())),
+    settleArray(fetchRssFeed(UN_PEACE_URL, 'UN News', 'conflict', 900)),
+    settleArray(fetchRssFeed(UN_AFRICA_URL, 'UN Africa', 'conflict', 900)),
+    settleArray(fetchRssFeed(ICRC_URL, 'ICRC', 'conflict', 1800)),
+    settleArray(Promise.all(OSINT_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, f.sourceType, 1800, OSINT_MAX_AGE_MS))).then(r => r.flat())),
+    settleArray(Promise.all(CYBER_RSS_FEEDS.map(f => fetchRssFeed(f.url, f.name, 'cyber'))).then(r => r.flat())),
+    settleArray(fetchRssFeed(NCSC_URL, 'NCSC UK', 'ncsc')),
+    settleArray(fetchRssFeed(HIBP_URL, 'HIBP', 'breach')),
+    settleArray(fetchCisaKev()),
+    settleArray(fetchThreatFox(abusechKey)),
+    settleArray(fetchFeodoTracker(abusechKey)),
+    settleArray(fetchRansomwareLive()),
+    fetchSansInfocon().catch(err => {
+      console.error('SANS InfoCon error:', err.message || err);
+      return 'unknown';
+    }),
   ]);
 
   // Route ACLED and ReliefWeb items to AOI countries where they match
