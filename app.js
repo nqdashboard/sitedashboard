@@ -2,7 +2,9 @@
 
 const API_URL = '/api/feeds';
 const REFRESH_INTERVAL = 2 * 60 * 1000;        // 2 minutes
+const FETCH_TIMEOUT = 30 * 1000;               // 30 seconds
 const HARD_RELOAD_INTERVAL = 60 * 60 * 1000;   // 60 minutes
+const MAX_REFRESH_BACKOFF = 10 * 60 * 1000;    // 10 minutes
 const FEED_SCROLL_SPEED = 0.012;               // px per ms
 const GLOBAL_FEED_SCROLL_SPEED_MULTIPLIER = 0.5;
 const FEED_INTERACTION_PAUSE = 12000;          // 12 seconds
@@ -11,6 +13,8 @@ const PREVIEW_TWO_SENTENCE_MAX = 240;
 const CYBER_CARD_MAX_CHARS = 120;
 const CYBER_CARD_MAX_LINES = 2;
 let consecutiveFailures = 0;
+let refreshTimerId = null;
+let refreshInFlight = false;
 const feedScrollers = new WeakMap();
 const renderedFeedItems = new Map();
 
@@ -332,6 +336,28 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;');
 }
 
+function escapeAttribute(text) {
+  return escapeHtml(text)
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeClassToken(value) {
+  return /^[a-z0-9_-]+$/i.test(value || '') ? value : '';
+}
+
+function safeItemLink(link) {
+  const raw = (link || '').trim();
+  if (!raw) return '#';
+
+  try {
+    const url = new URL(raw, window.location.origin);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '#';
+  } catch {
+    return '#';
+  }
+}
+
 function summarizeDescription(desc) {
   const clean = (desc || '').replace(/\s+/g, ' ').trim();
   if (!clean) return '';
@@ -396,15 +422,18 @@ function summarizeCyberDescription(desc, maxLines = CYBER_CARD_MAX_LINES, maxCha
 
 function createItemHTML(item, defaultColorClass, highlight = false, isNew = false, dimByAge = true, suppressBadges = false, calmMeta = false) {
   const escapedTitle = escapeHtml(item.title || '');
+  const escapedSource = escapeHtml(item.source || 'Unknown');
+  const escapedLink = escapeAttribute(safeItemLink(item.link));
+  const sourceType = safeClassToken(item.sourceType);
   const highlightClass = highlight ? ' feed-item--highlight' : '';
   const newClass = isNew ? ' feed-item--new' : '';
   const ageClassName = dimByAge ? ageClass(item.pubDate) : '';
-  const isOsint = item.sourceType === 'osint';
+  const isOsint = sourceType === 'osint';
 
-  const style = getSourceStyle(item);
+  const style = SOURCE_STYLES[sourceType] || { colorClass: null, badge: null };
   const colorClass = calmMeta ? defaultColorClass : (style.colorClass || defaultColorClass);
   const badgeHTML = !isOsint && !suppressBadges && style.badge
-    ? `<span class="feed-item__badge feed-item__badge--${item.sourceType}">${style.badge}</span>`
+    ? `<span class="feed-item__badge feed-item__badge--${sourceType}">${style.badge}</span>`
     : '';
 
   const text = item.title + ' ' + (item.description || '');
@@ -413,26 +442,26 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
     ? `<span class="feed-item__flags">${flags.join('')}</span>`
     : '';
 
-  const typeClass = item.sourceType && item.sourceType !== 'news'
-    ? ` feed-item--${item.sourceType}`
+  const typeClass = sourceType && sourceType !== 'news'
+    ? ` feed-item--${sourceType}`
     : '';
 
-  const fatalClass = item.sourceType === 'acled' && /\[\d+ killed\]/.test(item.title)
+  const fatalClass = sourceType === 'acled' && /\[\d+ killed\]/.test(item.title)
     ? ' feed-item--fatal' : '';
 
   const desc = item.description
     ? item.description.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
     : '';
-  const preview = (item.sourceType === 'cyber' || item.sourceType === 'osint' || item.sourceType === 'ransom')
+  const preview = (sourceType === 'cyber' || sourceType === 'osint' || sourceType === 'ransom')
     ? summarizeCyberDescription(
       desc,
-      item.sourceType === 'ransom' ? 4 : CYBER_CARD_MAX_LINES,
-      item.sourceType === 'ransom' ? 180 : CYBER_CARD_MAX_CHARS,
+      sourceType === 'ransom' ? 4 : CYBER_CARD_MAX_LINES,
+      sourceType === 'ransom' ? 180 : CYBER_CARD_MAX_CHARS,
     )
     : summarizeDescription(desc);
   let descClass = 'feed-item__desc';
-  if (item.sourceType === 'cyber' || item.sourceType === 'ransom') descClass += ' feed-item__desc--cyber';
-  if (item.sourceType === 'ransom') descClass += ' feed-item__desc--ransom';
+  if (sourceType === 'cyber' || sourceType === 'ransom') descClass += ' feed-item__desc--cyber';
+  if (sourceType === 'ransom') descClass += ' feed-item__desc--ransom';
   if (preview.includes('\n')) descClass += ' feed-item__desc--preformatted';
   const descHTML = preview
     ? `<p class="${descClass}">${escapeHtml(preview)}</p>`
@@ -442,11 +471,11 @@ function createItemHTML(item, defaultColorClass, highlight = false, isNew = fals
     <div class="feed-item${highlightClass}${newClass}${typeClass}${fatalClass}${ageClassName}">
       <div class="feed-item__meta">
         ${badgeHTML}
-        <span class="feed-item__source ${colorClass}">${item.source}</span>
+        <span class="feed-item__source ${colorClass}">${escapedSource}</span>
         ${flagsHTML}
         <span>${relativeTime(item.pubDate)}</span>
       </div>
-      <a class="feed-item__headline" href="${item.link}" target="_blank" rel="noopener">${escapedTitle}</a>
+      <a class="feed-item__headline" href="${escapedLink}" target="_blank" rel="noopener">${escapedTitle}</a>
       ${descHTML}
     </div>`;
 }
@@ -479,8 +508,10 @@ function renderFeed(containerId, items, defaultColorClass, highlightRegex) {
 
 function renderCyberFeed(containerId, items) {
   const container = document.getElementById(containerId);
+  const scrollEl = container.closest('.feed__scroll');
   const previousKeys = renderedFeedItems.get(containerId);
   if (!items.length) {
+    if (scrollEl) destroyFeedScroller(scrollEl);
     renderedFeedItems.set(containerId, new Set());
     container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No active alerts</span></div>';
     return;
@@ -496,13 +527,17 @@ function renderCyberFeed(containerId, items) {
   }).join('');
   renderedFeedItems.set(containerId, nextKeys);
   container.innerHTML = html;
+
+  if (scrollEl) requestAnimationFrame(() => setupFeedScroller(scrollEl));
 }
 
 function renderOsintFeed(containerId, items) {
   const container = document.getElementById(containerId);
+  const scrollEl = container.closest('.feed__scroll');
   const previousKeys = renderedFeedItems.get(containerId);
 
   if (!items.length) {
+    if (scrollEl) destroyFeedScroller(scrollEl);
     renderedFeedItems.set(containerId, new Set());
     container.innerHTML = '<div class="feed-item"><span class="feed-item__meta" style="color:var(--text-muted)">No recent OSINT updates</span></div>';
     return;
@@ -517,6 +552,8 @@ function renderOsintFeed(containerId, items) {
     return createItemHTML(item, 'feed-item__source--osint', false, isNew, false);
   }).join('');
   renderedFeedItems.set(containerId, nextKeys);
+
+  if (scrollEl) requestAnimationFrame(() => setupFeedScroller(scrollEl));
 }
 
 function destroyFeedScroller(scrollEl) {
@@ -532,9 +569,19 @@ function setupFeedScroller(scrollEl) {
 
   destroyFeedScroller(scrollEl);
 
-  const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+  const isHorizontal = scrollEl.classList.contains('feed__scroll--horizontal');
+  const getScrollMax = () => isHorizontal
+    ? scrollEl.scrollWidth - scrollEl.clientWidth
+    : scrollEl.scrollHeight - scrollEl.clientHeight;
+  const getScrollPosition = () => isHorizontal ? scrollEl.scrollLeft : scrollEl.scrollTop;
+  const setScrollPosition = value => {
+    if (isHorizontal) scrollEl.scrollLeft = value;
+    else scrollEl.scrollTop = value;
+  };
+
+  const maxScroll = getScrollMax();
   if (maxScroll <= 0) {
-    scrollEl.scrollTop = 0;
+    setScrollPosition(0);
     return;
   }
 
@@ -566,22 +613,22 @@ function setupFeedScroller(scrollEl) {
       state.lastTs = ts;
 
       if (!document.hidden && !state.hovering && ts >= state.pauseUntil) {
-        const currentMax = scrollEl.scrollHeight - scrollEl.clientHeight;
+        const currentMax = getScrollMax();
         if (currentMax <= 0) {
-          scrollEl.scrollTop = 0;
+          setScrollPosition(0);
         } else {
-          const next = scrollEl.scrollTop + (delta * scrollSpeed * state.direction);
+          const next = getScrollPosition() + (delta * scrollSpeed * state.direction);
 
           if (next >= currentMax) {
-            scrollEl.scrollTop = currentMax;
+            setScrollPosition(currentMax);
             state.direction = -1;
             state.pauseUntil = ts + FEED_EDGE_PAUSE;
           } else if (next <= 0) {
-            scrollEl.scrollTop = 0;
+            setScrollPosition(0);
             state.direction = 1;
             state.pauseUntil = ts + FEED_EDGE_PAUSE;
           } else {
-            scrollEl.scrollTop = next;
+            setScrollPosition(next);
           }
         }
       }
@@ -679,11 +726,25 @@ function updateInfocon(level) {
   label.textContent = 'INFOCON: ' + lvl.toUpperCase();
 }
 
-async function refreshDashboard() {
+async function fetchDashboardData() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
   try {
-    const res = await fetch(API_URL);
-    if (!res.ok) { updateStatus(false); return; }
-    const data = await res.json();
+    const res = await fetch(API_URL, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Feed returned ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function refreshDashboard() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+
+  try {
+    const data = await fetchDashboardData();
 
     const aoi = data.aoi || {};
     renderFeed('items-aoi-uk', aoi.uk || [], 'feed-item__source--blue');
@@ -697,24 +758,34 @@ async function refreshDashboard() {
     updateCyberStats(data.cyberStats);
     updateStatus(true, data.cachedAt);
     consecutiveFailures = 0;
-  } catch {
+  } catch (err) {
     updateStatus(false);
     consecutiveFailures++;
+    console.error('Dashboard refresh failed:', err.message || err);
+  } finally {
+    refreshInFlight = false;
   }
+}
+
+function nextRefreshDelay() {
+  if (consecutiveFailures < 3) return REFRESH_INTERVAL;
+  return Math.min(
+    REFRESH_INTERVAL * Math.pow(2, consecutiveFailures - 2),
+    MAX_REFRESH_BACKOFF,
+  );
+}
+
+function scheduleNextRefresh(delay = nextRefreshDelay()) {
+  if (refreshTimerId) clearTimeout(refreshTimerId);
+  refreshTimerId = setTimeout(async () => {
+    await refreshDashboard();
+    scheduleNextRefresh();
+  }, delay);
 }
 
 /* ── Init & Timers ────────────────────────────────────── */
 
-refreshDashboard();
-
-setInterval(() => {
-  if (consecutiveFailures >= 3) {
-    const backoff = Math.min(REFRESH_INTERVAL * Math.pow(2, consecutiveFailures - 2), 10 * 60 * 1000);
-    setTimeout(refreshDashboard, backoff - REFRESH_INTERVAL);
-    return;
-  }
-  refreshDashboard();
-}, REFRESH_INTERVAL);
+refreshDashboard().finally(() => scheduleNextRefresh());
 
 setTimeout(() => {
   if (!document.hidden) location.reload();

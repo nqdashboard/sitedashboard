@@ -107,8 +107,23 @@ const NON_GEOPOLITICAL = /\b(football|soccer|cricket|rugby|tennis|boxing|UFC|MMA
 
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const OSINT_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+const UPSTREAM_FETCH_TIMEOUT = 15 * 1000;
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
 const TRANSLATE_API_BASE = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=';
+
+async function fetchWithTimeout(resource, options = {}, timeoutMs = UPSTREAM_FETCH_TIMEOUT) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(resource, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 function isRecent(dateStr, maxAgeMs = MAX_AGE_MS) {
   if (!dateStr) return false;
@@ -253,7 +268,7 @@ async function translateToEnglish(text) {
   if (!text || !needsEnglishTranslation(text)) return text;
 
   try {
-    const res = await fetch(`${TRANSLATE_API_BASE}${encodeURIComponent(text)}`, {
+    const res = await fetchWithTimeout(`${TRANSLATE_API_BASE}${encodeURIComponent(text)}`, {
       cf: { cacheTtl: 86400, cacheEverything: true },
     });
     if (!res.ok) return text;
@@ -290,7 +305,7 @@ async function translateToEnglishForced(text, sourceLang = 'auto') {
 
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=en&dt=t&dj=1&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       cf: { cacheTtl: 86400, cacheEverything: true },
     });
     if (!res.ok) return text;
@@ -480,7 +495,7 @@ function parseRss(xml, feedName, sourceType, maxAgeMs = MAX_AGE_MS) {
 
 async function fetchRssFeed(url, feedName, sourceType, cacheTtl = 900, maxAgeMs = MAX_AGE_MS) {
   try {
-    const res = await fetch(url, { cf: { cacheTtl, cacheEverything: true } });
+    const res = await fetchWithTimeout(url, { cf: { cacheTtl, cacheEverything: true } });
     if (!res.ok) return [];
     const xml = await res.text();
     const items = parseRss(xml, feedName, sourceType, maxAgeMs);
@@ -495,7 +510,7 @@ async function fetchRssFeed(url, feedName, sourceType, cacheTtl = 900, maxAgeMs 
 
 async function fetchUSGS() {
   try {
-    const res = await fetch(USGS_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
+    const res = await fetchWithTimeout(USGS_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
     if (!res.ok) return [];
     const data = await res.json();
     if (!data.features) return [];
@@ -552,7 +567,7 @@ async function fetchAcled(env) {
       + `&event_date_where=BETWEEN&limit=50`
       + `&fields=event_date|event_type|sub_event_type|country|admin1|notes|fatalities|source_url`;
 
-    const res = await fetch(url, { cf: { cacheTtl: 1800, cacheEverything: true } });
+    const res = await fetchWithTimeout(url, { cf: { cacheTtl: 1800, cacheEverything: true } });
     if (!res.ok) return [];
     const data = await res.json();
     if (!data.data?.length) return [];
@@ -592,7 +607,7 @@ async function fetchReliefWeb(env) {
       + '&fields[include][]=primary_country&fields[include][]=disaster_type&fields[include][]=source'
       + '&fields[include][]=body-html';
 
-    const res = await fetch(url, { cf: { cacheTtl: 1800, cacheEverything: true } });
+    const res = await fetchWithTimeout(url, { cf: { cacheTtl: 1800, cacheEverything: true } });
     if (!res.ok) return [];
     const data = await res.json();
     if (!data.data?.length) return [];
@@ -630,7 +645,7 @@ async function fetchReliefWeb(env) {
 
 async function fetchCisaKev() {
   try {
-    const res = await fetch(CISA_KEV_URL, { cf: { cacheTtl: 3600, cacheEverything: true } });
+    const res = await fetchWithTimeout(CISA_KEV_URL, { cf: { cacheTtl: 3600, cacheEverything: true } });
     if (!res.ok) return [];
     const data = await res.json();
     if (!data.vulnerabilities) return [];
@@ -661,7 +676,7 @@ async function fetchCisaKev() {
 async function fetchThreatFox(authKey) {
   try {
     const headers = authKey ? { 'Auth-Key': authKey } : {};
-    const res = await fetch(THREATFOX_URL, { headers, cf: { cacheTtl: 900, cacheEverything: true } });
+    const res = await fetchWithTimeout(THREATFOX_URL, { headers, cf: { cacheTtl: 900, cacheEverything: true } });
     if (!res.ok) return [];
     const text = await res.text();
     const data = JSON.parse(text);
@@ -703,7 +718,7 @@ async function fetchThreatFox(authKey) {
 async function fetchFeodoTracker(authKey) {
   try {
     const headers = authKey ? { 'Auth-Key': authKey } : {};
-    const res = await fetch(FEODO_URL, { headers, cf: { cacheTtl: 1800, cacheEverything: true } });
+    const res = await fetchWithTimeout(FEODO_URL, { headers, cf: { cacheTtl: 1800, cacheEverything: true } });
     if (!res.ok) return [];
     const data = await res.json();
     if (!Array.isArray(data)) return [];
@@ -728,7 +743,7 @@ async function fetchFeodoTracker(authKey) {
 
 async function fetchRansomwareLive() {
   try {
-    const res = await fetch(RANSOMWARE_LIVE_URL, { cf: { cacheTtl: 900, cacheEverything: true } });
+    const res = await fetchWithTimeout(RANSOMWARE_LIVE_URL, { cf: { cacheTtl: 900, cacheEverything: true } });
     if (!res.ok) return [];
     const data = await res.json();
     if (!Array.isArray(data)) return [];
@@ -781,7 +796,7 @@ async function fetchRansomwareLive() {
 
 async function fetchSansInfocon() {
   try {
-    const res = await fetch(SANS_INFOCON_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
+    const res = await fetchWithTimeout(SANS_INFOCON_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
     if (!res.ok) return 'unknown';
     const data = await res.json();
     return data.status || 'unknown';
